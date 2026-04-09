@@ -69,3 +69,8 @@ export const submissionsAPI = {
   unlockCategory: (judgeId, categoryId) =>
     api.post('/submissions/unlock', { judge_id: judgeId, category_id: categoryId }),
 };
+
+// --- Reports ---
+export const reportsAPI = {
+  getReport: (eventId, categoryId) => api.get(`/reports/${eventId}/category/${categoryId}`),
+};

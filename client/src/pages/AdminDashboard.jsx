@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import EventSetup from './EventSetup';
 import AdminMonitor from './AdminMonitor';
-import { ClipboardList, BarChart3 } from 'lucide-react';
+import PrintReport from './PrintReport';
+import { ClipboardList, BarChart3, Printer } from 'lucide-react';
 
 const TABS = [
   { id: 'setup', label: 'Setup', icon: ClipboardList },
   { id: 'monitor', label: 'Monitor', icon: BarChart3 },
+  { id: 'reports', label: 'Reports', icon: Printer },
 ];
 
 export default function AdminDashboard() {
@@ -41,6 +43,7 @@ export default function AdminDashboard() {
       <div role="tabpanel">
         {activeTab === 'setup' && <EventSetup />}
         {activeTab === 'monitor' && <AdminMonitor />}
+        {activeTab === 'reports' && <PrintReport />}
       </div>
     </div>
   );
