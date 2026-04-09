@@ -9,6 +9,8 @@ import judgesRouter from './routes/judges.js';
 import contestantsRouter from './routes/contestants.js';
 import categoriesRouter from './routes/categories.js';
 import criteriaRouter from './routes/criteria.js';
+import { authService } from './services/authService.js';
+import { eventsService } from './services/eventsService.js';
 
 dotenv.config();
 
@@ -60,6 +62,46 @@ app.use('/api/events/:eventId/categories', categoriesRouter);
 app.use('/api/categories/:categoryId/criteria', criteriaRouter);
 app.use('/api/contestants', contestantsRouter);
 app.use('/api/criteria/:criterionId', criteriaRouter);
+
+// --- Judge Auth Route (direct mount to avoid Express 5 Router issue) ---
+app.post('/api/auth/judge', async (req, res, next) => {
+  const { event_id, seat_number, pin } = req.body;
+
+  if (!event_id || !seat_number || !pin) {
+    return res.status(400).json({ error: 'event_id, seat_number, and pin are required' });
+  }
+  if (typeof event_id !== 'number' || event_id < 1) {
+    return res.status(400).json({ error: 'event_id must be a positive integer' });
+  }
+  if (typeof seat_number !== 'number' || seat_number < 1) {
+    return res.status(400).json({ error: 'seat_number must be a positive integer' });
+  }
+  if (typeof pin !== 'string' || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    return res.status(400).json({ error: 'pin must be exactly 4 digits' });
+  }
+
+  try {
+    const event = eventsService.getById(event_id);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (event.status !== 'active') {
+      return res.status(403).json({ error: 'This event is archived and no longer accepting scores' });
+    }
+
+    const judge = await authService.authenticateJudge(event_id, seat_number, pin);
+    if (!judge) {
+      return res.status(401).json({ error: 'Invalid seat number or PIN' });
+    }
+
+    return res.json({
+      judge,
+      event: { id: event.id, name: event.name, status: event.status },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // --- Error Handling Middleware ---
 // eslint-disable-next-line no-unused-vars
