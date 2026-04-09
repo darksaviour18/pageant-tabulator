@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Calendar, ChevronRight, AlertCircle } from 'lucide-react';
+import { LogOut, Calendar, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
 import { scoringAPI, submissionsAPI } from '../api';
 import ScoreSheet from '../components/ScoreSheet';
@@ -8,7 +8,7 @@ import { useSocket } from '../context/SocketContext';
 
 export default function JudgeDashboard() {
   const navigate = useNavigate();
-  const { onEvent } = useSocket();
+  const { onEvent, connected, lastSync } = useSocket();
   const [session, setSession] = useState(null);
   const [scoringData, setScoringData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -104,17 +104,27 @@ export default function JudgeDashboard() {
 
   // Show spreadsheet if a category is selected
   if (selectedCategory && scoringData) {
+    const timeSinceSync = lastSync ? `${Math.max(1, Math.floor((Date.now() - lastSync) / 1000))}s ago` : 'never';
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
+        {/* Offline banner */}
+        {!connected && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+            <WifiOff className="w-4 h-4" />
+            Working offline. Scores saved locally.
+          </div>
+        )}
+
         {/* Compact header */}
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold text-slate-900">
               {session.judgeName} — {session.eventName}
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Scoring: {selectedCategory.name}
-            </p>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400" title={`Last sync: ${timeSinceSync}`}>
+              {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
+              <span>{connected ? 'Connected' : 'Disconnected'}</span>
+            </div>
           </div>
           <button
             onClick={handleLogout}
@@ -145,8 +155,9 @@ export default function JudgeDashboard() {
   }
 
   // Category selection view
+  const timeSinceSync = lastSync ? `${Math.max(1, Math.floor((Date.now() - lastSync) / 1000))}s ago` : 'never';
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -156,6 +167,11 @@ export default function JudgeDashboard() {
           <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
             <Calendar className="w-4 h-4" />
             <span>{session.eventName}</span>
+            <span className="text-slate-300">·</span>
+            <span className="flex items-center gap-1.5" title={`Last sync: ${timeSinceSync}`}>
+              {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
+              {connected ? 'Connected' : 'Disconnected'}
+            </span>
           </div>
         </div>
         <button
@@ -166,6 +182,14 @@ export default function JudgeDashboard() {
           Sign Out
         </button>
       </div>
+
+      {/* Offline banner */}
+      {!connected && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+          <WifiOff className="w-4 h-4" />
+          Working offline. Scores saved locally.
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
