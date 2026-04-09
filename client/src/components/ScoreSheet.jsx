@@ -7,7 +7,8 @@ import {
 import ScoreCell from './ScoreCell';
 import { useOfflineScores } from '../hooks/useOfflineScores';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { ArrowLeft, Send, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import SubmitConfirmModal from './SubmitConfirmModal';
 
 export default function ScoreSheet({
   judgeId,
@@ -20,6 +21,8 @@ export default function ScoreSheet({
 }) {
   const [focusedCell, setFocusedCell] = useState({ row: 0, col: 0 });
   const [syncing, setSyncing] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Offline-first: read from IndexedDB
   const { getScore, isUnsaved, isSubmitted, loading: dbLoading } = useOfflineScores(
@@ -46,11 +49,16 @@ export default function ScoreSheet({
   );
 
   // Force flush remaining scores on category submit
-  const handleSubmit = useCallback(async () => {
+  const handleInitiateSubmit = useCallback(() => {
+    setShowSubmitModal(true);
+  }, []);
+
+  const handleConfirmSubmit = useCallback(async () => {
+    setShowSubmitModal(false);
     if (getPendingCount() > 0) {
-      setSyncing(true);
+      setSubmitting(true);
       await syncNow();
-      setSyncing(false);
+      setSubmitting(false);
     }
     onSubmit();
   }, [getPendingCount, syncNow, onSubmit]);
@@ -167,11 +175,11 @@ export default function ScoreSheet({
             </span>
           )}
           <button
-            onClick={handleSubmit}
-            disabled={!allFilled || isReadOnly || syncing}
+            onClick={handleInitiateSubmit}
+            disabled={!allFilled || isReadOnly}
             className="flex items-center gap-2 px-5 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
           >
-            {syncing ? (
+            {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Syncing...
@@ -201,6 +209,16 @@ export default function ScoreSheet({
           Use Tab/Arrow keys to navigate · Enter to move down · Auto-saves after 250ms
         </span>
       </div>
+
+      {/* Read-Only Banner */}
+      {isReadOnly && (
+        <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-slate-500 flex-shrink-0" />
+          <span className="text-sm text-slate-600 font-medium">
+            This category has been {isSubmitted ? 'submitted and locked' : 'locked by admin'}. You cannot edit scores.
+          </span>
+        </div>
+      )}
 
       {/* Spreadsheet Table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -239,6 +257,15 @@ export default function ScoreSheet({
           </table>
         </div>
       </div>
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitModal && (
+        <SubmitConfirmModal
+          categoryName={category.name}
+          onConfirm={handleConfirmSubmit}
+          onCancel={() => setShowSubmitModal(false)}
+        />
+      )}
     </div>
   );
 }

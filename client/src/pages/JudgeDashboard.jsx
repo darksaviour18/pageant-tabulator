@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Calendar, ChevronRight, AlertCircle } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
-import { scoringAPI } from '../api';
+import { scoringAPI, submissionsAPI } from '../api';
 import ScoreSheet from '../components/ScoreSheet';
 
 export default function JudgeDashboard() {
@@ -12,6 +12,7 @@ export default function JudgeDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [submittedCategories, setSubmittedCategories] = useState(new Set());
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -49,10 +50,14 @@ export default function JudgeDashboard() {
 
   const handleSubmitCategory = async () => {
     if (!session || !selectedCategory) return;
-    if (!confirm(`Submit "${selectedCategory.name}" scores? You cannot edit after submission.`)) return;
 
-    // TODO: Phase 8 - implement submission API
-    alert('Category submission will be implemented in Phase 8.');
+    try {
+      await submissionsAPI.submitCategory(session.judgeId, selectedCategory.id);
+      setSubmittedCategories((prev) => new Set([...prev, selectedCategory.id]));
+      setSelectedCategory(null); // Return to category list
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to submit category');
+    }
   };
 
   if (!session || loading) {
@@ -135,21 +140,28 @@ export default function JudgeDashboard() {
           {scoringData.categories.map((cat) => {
             const criteriaCount = cat.criteria?.length || 0;
             const isLocked = cat.is_locked;
+            const isSubmitted = submittedCategories.has(cat.id);
 
             return (
               <button
                 key={cat.id}
-                onClick={() => !isLocked && handleSelectCategory(cat)}
-                disabled={isLocked}
+                onClick={() => !isLocked && !isSubmitted && handleSelectCategory(cat)}
+                disabled={isLocked || isSubmitted}
                 className={`text-left p-5 rounded-xl border-2 transition-all ${
-                  isLocked
+                  isSubmitted
+                    ? 'border-green-200 bg-green-50 cursor-not-allowed'
+                    : isLocked
                     ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
                     : 'border-slate-200 hover:border-amber-400 hover:shadow-md bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-slate-900">{cat.name}</h3>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  {isSubmitted ? (
+                    <span className="text-green-600 text-xs font-medium">✓ Submitted</span>
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
                 </div>
                 <div className="text-sm text-slate-500">
                   {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'}
