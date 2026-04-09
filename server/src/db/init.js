@@ -6,8 +6,9 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-const DB_PATH = path.join(DATA_DIR, 'pageant.db');
+// Allow override via env var (used in tests)
+const DATA_DIR = process.env.DB_DIR || path.join(__dirname, '..', '..', 'data');
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'pageant.db');
 
 /**
  * Initialize and return a Better-SQLite3 database connection with WAL mode enabled.
