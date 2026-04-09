@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
-import EventSetup from './pages/EventSetup';
+import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
 import JudgeLogin from './pages/JudgeLogin';
 import JudgeDashboard from './pages/JudgeDashboard';
@@ -8,7 +8,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Admin routes */}
-      <Route path="/" element={<EventSetup />} />
+      <Route path="/" element={<AdminDashboard />} />
 
       {/* Judge portal routes (full-screen, no admin layout) */}
       <Route path="/judge/login" element={<JudgeLogin />} />
