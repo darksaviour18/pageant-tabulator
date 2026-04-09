@@ -56,6 +56,16 @@ export const scoringAPI = {
   getContext: (judgeId, eventId) => api.get(`/scoring/${judgeId}/event/${eventId}`),
   getCategoryScores: (judgeId, eventId, categoryId) =>
     api.get(`/scoring/${judgeId}/event/${eventId}/category/${categoryId}`),
+};
+
+export const scoresAPI = {
   submitScore: (data) => api.post('/scores', data),
   batchSubmitScores: (scores) => api.post('/scores/batch', { scores }),
+};
+
+export const submissionsAPI = {
+  submitCategory: (judgeId, categoryId) =>
+    api.post('/submissions', { judge_id: judgeId, category_id: categoryId }),
+  unlockCategory: (judgeId, categoryId) =>
+    api.post('/submissions/unlock', { judge_id: judgeId, category_id: categoryId }),
 };

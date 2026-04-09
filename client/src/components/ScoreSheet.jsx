@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -6,7 +6,8 @@ import {
 } from '@tanstack/react-table';
 import ScoreCell from './ScoreCell';
 import { useOfflineScores } from '../hooks/useOfflineScores';
-import { ArrowLeft, Send } from 'lucide-react';
+import { useAutoSave } from '../hooks/useAutoSave';
+import { ArrowLeft, Send, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function ScoreSheet({
   judgeId,
@@ -18,16 +19,41 @@ export default function ScoreSheet({
   onSubmit,
 }) {
   const [focusedCell, setFocusedCell] = useState({ row: 0, col: 0 });
+  const [syncing, setSyncing] = useState(false);
 
-  const { saveLocalScore, getScore, isUnsaved, isSubmitted, loading: dbLoading } = useOfflineScores(
+  // Offline-first: read from IndexedDB
+  const { getScore, isUnsaved, isSubmitted, loading: dbLoading } = useOfflineScores(
     judgeId,
     category.id,
     { serverScores }
   );
 
-  const isReadOnly = isSubmitted || category.is_locked;
+  // Auto-save: write to IndexedDB immediately, debounce POST to server
+  const { saveAndSync, syncNow, getPendingCount } = useAutoSave({
+    judgeId,
+    categoryId: category.id,
+  });
 
+  const isReadOnly = isSubmitted || category.is_locked;
   const criteria = category.criteria || [];
+
+  // Handle score change: save locally + queue for server sync
+  const handleScoreChange = useCallback(
+    (contestantId, criteriaId, score) => {
+      saveAndSync(contestantId, criteriaId, score);
+    },
+    [saveAndSync]
+  );
+
+  // Force flush remaining scores on category submit
+  const handleSubmit = useCallback(async () => {
+    if (getPendingCount() > 0) {
+      setSyncing(true);
+      await syncNow();
+      setSyncing(false);
+    }
+    onSubmit();
+  }, [getPendingCount, syncNow, onSubmit]);
 
   // Build table columns
   const columns = useMemo(() => {
@@ -76,7 +102,7 @@ export default function ScoreSheet({
               isSaved={saved}
               isUnsaved={unsaved}
               isReadOnly={isReadOnly}
-              onChange={(score) => saveLocalScore(contestant.id, crit.id, score)}
+              onChange={(score) => handleScoreChange(contestant.id, crit.id, score)}
               rowIndex={row.index}
               colIndex={idx}
               totalRows={contestants.length}
@@ -89,7 +115,7 @@ export default function ScoreSheet({
     });
 
     return cols;
-  }, [criteria, contestants, getScore, isUnsaved, isReadOnly, saveLocalScore]);
+  }, [criteria, contestants, getScore, isUnsaved, isReadOnly, handleScoreChange]);
 
   const data = useMemo(() => contestants, [contestants]);
 
@@ -98,18 +124,6 @@ export default function ScoreSheet({
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
-
-  // Focus management: focus the input in the focused cell
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const rowEl = document.querySelector(`tr[data-row="${focusedCell.row}"]`);
-      if (rowEl) {
-        const input = rowEl.querySelector('input');
-        input?.focus();
-      }
-    }, 50);
-    return () => clearTimeout(timeout);
-  }, [focusedCell]);
 
   // Check if all cells are filled
   const allFilled = useMemo(() => {
@@ -120,10 +134,6 @@ export default function ScoreSheet({
       })
     );
   }, [contestants, criteria, getScore]);
-
-  const handleFocusCell = useCallback((row, col) => {
-    setFocusedCell({ row, col });
-  }, []);
 
   if (dbLoading) {
     return (
@@ -145,18 +155,33 @@ export default function ScoreSheet({
           Back to Categories
         </button>
         <div className="flex items-center gap-3">
+          {getPendingCount() > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Saving {getPendingCount()}...
+            </span>
+          )}
           {isReadOnly && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
               {isSubmitted ? 'Submitted' : 'Locked by Admin'}
             </span>
           )}
           <button
-            onClick={onSubmit}
-            disabled={!allFilled || isReadOnly}
+            onClick={handleSubmit}
+            disabled={!allFilled || isReadOnly || syncing}
             className="flex items-center gap-2 px-5 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
           >
-            <Send className="w-4 h-4" />
-            Submit Category
+            {syncing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Submit Category
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -173,7 +198,7 @@ export default function ScoreSheet({
           <span className="w-3 h-3 rounded bg-white border-2 border-slate-200 inline-block" /> Empty
         </span>
         <span className="ml-2 text-slate-400">
-          Use Tab/Arrow keys to navigate · Enter to move down
+          Use Tab/Arrow keys to navigate · Enter to move down · Auto-saves after 250ms
         </span>
       </div>
 
