@@ -20,9 +20,6 @@ export default function Header() {
               <User className="w-4 h-4" />
               Judge Portal
             </Link>
-            <div className="text-sm text-slate-500 hidden sm:block">
-              Admin Dashboard
-            </div>
           </div>
         </div>
       </div>
