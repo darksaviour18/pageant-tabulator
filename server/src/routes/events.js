@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb } from '../db/init.js';
+import { eventsService } from '../services/eventsService.js';
 
 const router = Router();
 
@@ -7,7 +7,7 @@ const router = Router();
  * POST /api/events
  * Create a new event.
  */
-router.post('/', (req, res) => {
+router.post('/', (req, res, next) => {
   const { name } = req.body;
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -15,18 +15,10 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO events (name, status) VALUES (?, ?)'
-    );
-    const result = stmt.run(name.trim(), 'active');
-
-    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
-
+    const event = eventsService.create(name.trim());
     return res.status(201).json(event);
   } catch (err) {
-    console.error('[Error] Creating event:', err);
-    return res.status(500).json({ error: 'Failed to create event' });
+    next(err);
   }
 });
 
@@ -34,14 +26,12 @@ router.post('/', (req, res) => {
  * GET /api/events
  * Get all events.
  */
-router.get('/', (req, res) => {
+router.get('/', (req, res, next) => {
   try {
-    const db = getDb();
-    const events = db.prepare('SELECT * FROM events ORDER BY created_at DESC').all();
+    const events = eventsService.getAll();
     return res.json(events);
   } catch (err) {
-    console.error('[Error] Fetching events:', err);
-    return res.status(500).json({ error: 'Failed to fetch events' });
+    next(err);
   }
 });
 
@@ -49,48 +39,17 @@ router.get('/', (req, res) => {
  * GET /api/events/:id
  * Get a single event with its judges, contestants, and categories.
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const db = getDb();
-    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
-
+    const event = eventsService.getByIdWithRelations(parseInt(id, 10));
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-
-    const judges = db
-      .prepare('SELECT id, event_id, seat_number, name FROM judges WHERE event_id = ? ORDER BY seat_number')
-      .all(id);
-
-    const contestants = db
-      .prepare('SELECT * FROM contestants WHERE event_id = ? ORDER BY number')
-      .all(id);
-
-    const categories = db
-      .prepare(`
-        SELECT c.*,
-          (SELECT json_group_array(
-            json_object(
-              'id', cr.id,
-              'name', cr.name,
-              'weight', cr.weight,
-              'min_score', cr.min_score,
-              'max_score', cr.max_score,
-              'display_order', cr.display_order
-            )
-          ) FROM criteria cr WHERE cr.category_id = c.id) as criteria
-        FROM categories c
-        WHERE c.event_id = ?
-        ORDER BY c.display_order
-      `)
-      .all(id);
-
-    return res.json({ ...event, judges, contestants, categories });
+    return res.json(event);
   } catch (err) {
-    console.error('[Error] Fetching event:', err);
-    return res.status(500).json({ error: 'Failed to fetch event' });
+    next(err);
   }
 });
 
@@ -98,50 +57,31 @@ router.get('/:id', (req, res) => {
  * PATCH /api/events/:id
  * Update event name or status.
  */
-router.patch('/:id', (req, res) => {
+router.patch('/:id', (req, res, next) => {
   const { id } = req.params;
   const { name, status } = req.body;
 
   try {
-    const db = getDb();
-    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
-
-    if (!event) {
+    const existing = eventsService.getById(parseInt(id, 10));
+    if (!existing) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const updates = [];
-    const values = [];
-
-    if (name !== undefined) {
-      if (typeof name !== 'string' || name.trim().length === 0) {
-        return res.status(400).json({ error: 'Event name cannot be empty' });
-      }
-      updates.push('name = ?');
-      values.push(name.trim());
+    if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
+      return res.status(400).json({ error: 'Event name cannot be empty' });
     }
 
-    if (status !== undefined) {
-      if (!['active', 'archived'].includes(status)) {
-        return res.status(400).json({ error: 'Status must be "active" or "archived"' });
-      }
-      updates.push('status = ?');
-      values.push(status);
+    if (status !== undefined && !['active', 'archived'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be "active" or "archived"' });
     }
 
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'No valid fields to update' });
-    }
-
-    values.push(id);
-    const stmt = db.prepare(`UPDATE events SET ${updates.join(', ')} WHERE id = ?`);
-    stmt.run(...values);
-
-    const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+    const updated = eventsService.update(parseInt(id, 10), {
+      name: name?.trim(),
+      status,
+    });
     return res.json(updated);
   } catch (err) {
-    console.error('[Error] Updating event:', err);
-    return res.status(500).json({ error: 'Failed to update event' });
+    next(err);
   }
 });
 
