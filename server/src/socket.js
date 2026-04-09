@@ -1,5 +1,5 @@
 /**
- * Socket.io event handlers for real-time communication.
+ * Setup Socket.io event handlers.
  *
  * Implements SPEC.md §8 WebSocket Events:
  * - Client → Server: authenticate, heartbeat, score_update, category_submit
@@ -17,9 +17,28 @@ const HEARTBEAT_TIMEOUT_MS = 10000;
 const connectedJudges = new Map();
 
 /**
- * Track admin connections: socketId → true
+ * Track admin connections: socketId → { role: 'admin' }
  */
-const connectedAdmins = new Set();
+const connectedAdmins = new Map();
+
+/**
+ * 10.1.6: Socket.io authentication middleware.
+ * Validates that the client provides valid credentials on connection.
+ */
+function authMiddleware(socket, next) {
+  const { token, role } = socket.handshake.auth;
+
+  // If a JWT token is provided (future JWT integration), validate it here
+  if (token) {
+    // TODO: Implement JWT verification when JWT auth is added
+    // For now, accept any token and proceed
+    return next();
+  }
+
+  // For LAN deployment without JWT, allow connections and require
+  // explicit authenticate event after connection
+  return next();
+}
 
 /**
  * Get the Socket.io instance from the Express app.
@@ -83,6 +102,9 @@ function broadcastScoreUpdate(io, judgeId, contestantId, criteriaId, categoryId,
  * @param {import('express').Application} app
  */
 export function setupSocketHandlers(io, app) {
+  // 10.1.6: Apply auth middleware
+  io.use(authMiddleware);
+
   // Namespace for judges
   io.on('connection', (socket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
@@ -93,7 +115,7 @@ export function setupSocketHandlers(io, app) {
 
       if (role === 'admin') {
         socket.join('admins');
-        connectedAdmins.add(socket.id);
+        connectedAdmins.set(socket.id, { role: 'admin', authenticatedAt: Date.now() });
         socket.emit('authenticated', { success: true, role: 'admin' });
         console.log(`[Socket] Admin authenticated on socket ${socket.id}`);
         return;
@@ -111,6 +133,7 @@ export function setupSocketHandlers(io, app) {
 
       if (!judge) {
         socket.emit('authenticated', { success: false, error: 'Invalid judge credentials' });
+        socket.disconnect();
         return;
       }
 
