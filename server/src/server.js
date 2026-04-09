@@ -4,6 +4,9 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import { initDatabase, closeDb } from './db/init.js';
+import eventsRouter from './routes/events.js';
+import judgesRouter from './routes/judges.js';
+import contestantsRouter from './routes/contestants.js';
 
 dotenv.config();
 
@@ -37,8 +40,11 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// --- Placeholder Routes (to be implemented in subsequent phases) ---
-// Events, Judges, Contestants, Categories, Scores, Submissions, Reports
+// --- API Routes ---
+app.use('/api/events', eventsRouter);
+app.use('/api/events/:eventId/judges', judgesRouter);
+app.use('/api/events/:eventId/contestants', contestantsRouter);
+app.use('/api/contestants', contestantsRouter);
 
 // --- Error Handling Middleware ---
 app.use((err, _req, res, _next) => {
