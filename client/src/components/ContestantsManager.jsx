@@ -1,73 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { contestantsAPI } from '../api';
-import { Trash2, Plus, Edit2 } from 'lucide-react';
+import { useCrudResource } from '../hooks/useCrudResource';
+import { Trash2, Plus } from 'lucide-react';
 
 export default function ContestantsManager({ eventId }) {
-  const [contestants, setContestants] = useState([]);
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    loadContestants();
-  }, [eventId]);
+  const { items: contestants, loading, error, success, handleCreate, handleDelete } = useCrudResource(
+    contestantsAPI,
+    { collectionKey: eventId }
+  );
 
-  const loadContestants = async () => {
-    try {
-      const res = await contestantsAPI.getAll(eventId);
-      setContestants(res.data);
-    } catch (err) {
-      console.error('Failed to load contestants:', err);
-    }
-  };
+  const activeContestants = useMemo(
+    () => contestants.filter((c) => c.status === 'active'),
+    [contestants]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
-    const num = parseInt(number);
-    if (!number || isNaN(num) || num < 1) {
-      setError('Contestant number must be a positive integer');
-      return;
-    }
-    if (!name.trim()) {
-      setError('Contestant name is required');
-      return;
-    }
+    const num = parseInt(number, 10);
+    if (isNaN(num) || num < 1) return;
+    if (!name.trim()) return;
 
-    setLoading(true);
-    try {
-      await contestantsAPI.create(eventId, {
-        number: num,
-        name: name.trim(),
-      });
+    const ok = await handleCreate({
+      number: num,
+      name: name.trim(),
+    });
+
+    if (ok) {
       setNumber('');
       setName('');
-      setSuccess(`Contestant #${num} "${name}" added`);
-      await loadContestants();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add contestant');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleWithdraw = async (id, contestantName) => {
     if (!confirm(`Mark "${contestantName}" as withdrawn?`)) return;
-
-    try {
-      await contestantsAPI.delete(id);
-      setSuccess(`"${contestantName}" marked as withdrawn`);
-      await loadContestants();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to withdraw contestant');
-    }
+    await handleDelete(id);
   };
-
-  const activeContestants = contestants.filter((c) => c.status === 'active');
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">

@@ -19,6 +19,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Request logging middleware
+app.use((req, _res, next) => {
+  const start = Date.now();
+  _res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[HTTP] ${req.method} ${req.originalUrl} ${_res.statusCode} ${duration}ms`);
+  });
+  next();
+});
+
 // --- Socket.io Setup ---
 const io = new Server(httpServer, {
   cors: {
@@ -47,9 +57,10 @@ app.use('/api/events/:eventId/contestants', contestantsRouter);
 app.use('/api/contestants', contestantsRouter);
 
 // --- Error Handling Middleware ---
+// eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
-  console.error('[Express Error]', err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('[Express Error]', err.message);
+  return res.status(500).json({ error: 'Internal server error' });
 });
 
 // --- Socket.io Connection Handler ---

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getDb } from '../db/init.js';
-import bcrypt from 'bcrypt';
+import { eventsService } from '../services/eventsService.js';
+import { judgesService } from '../services/judgesService.js';
 
 const router = Router({ mergeParams: true });
 
@@ -8,7 +8,7 @@ const router = Router({ mergeParams: true });
  * POST /api/events/:eventId/judges
  * Add a new judge to an event.
  */
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   const { eventId } = req.params;
   const { seat_number, name, pin } = req.body;
 
@@ -17,7 +17,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'seat_number, name, and pin are required' });
   }
 
-  if (typeof seat_number !== 'number' || seat_number < 1) {
+  if (typeof seat_number !== 'number' || seat_number < 1 || !Number.isInteger(seat_number)) {
     return res.status(400).json({ error: 'seat_number must be a positive integer' });
   }
 
@@ -26,34 +26,23 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const db = getDb();
-
     // Verify event exists
-    const event = db.prepare('SELECT id FROM events WHERE id = ?').get(eventId);
+    const event = eventsService.getById(parseInt(eventId, 10));
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Hash the PIN
-    const pinHash = await bcrypt.hash(pin, 10);
-
-    // Insert judge
-    const stmt = db.prepare(
-      'INSERT INTO judges (event_id, seat_number, name, pin_hash) VALUES (?, ?, ?, ?)'
-    );
-    const result = stmt.run(parseInt(eventId), seat_number, name.trim(), pinHash);
-
-    const judge = db.prepare(
-      'SELECT id, event_id, seat_number, name FROM judges WHERE id = ?'
-    ).get(result.lastInsertRowid);
-
+    const judge = await judgesService.create(parseInt(eventId, 10), {
+      seat_number,
+      name: name.trim(),
+      pin,
+    });
     return res.status(201).json(judge);
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE constraint')) {
       return res.status(409).json({ error: `Judge with seat number ${seat_number} already exists for this event` });
     }
-    console.error('[Error] Creating judge:', err);
-    return res.status(500).json({ error: 'Failed to create judge' });
+    next(err);
   }
 });
 
@@ -61,18 +50,14 @@ router.post('/', async (req, res) => {
  * GET /api/events/:eventId/judges
  * Get all judges for an event.
  */
-router.get('/', (req, res) => {
+router.get('/', (req, res, next) => {
   const { eventId } = req.params;
 
   try {
-    const db = getDb();
-    const judges = db
-      .prepare('SELECT id, event_id, seat_number, name FROM judges WHERE event_id = ? ORDER BY seat_number')
-      .all(eventId);
+    const judges = judgesService.getAll(parseInt(eventId, 10));
     return res.json(judges);
   } catch (err) {
-    console.error('[Error] Fetching judges:', err);
-    return res.status(500).json({ error: 'Failed to fetch judges' });
+    next(err);
   }
 });
 
@@ -80,22 +65,19 @@ router.get('/', (req, res) => {
  * DELETE /api/events/:eventId/judges/:judgeId
  * Delete a judge from an event.
  */
-router.delete('/:judgeId', (req, res) => {
+router.delete('/:judgeId', (req, res, next) => {
   const { eventId, judgeId } = req.params;
 
   try {
-    const db = getDb();
-    const judge = db.prepare('SELECT id FROM judges WHERE id = ? AND event_id = ?').get(judgeId, eventId);
-
-    if (!judge) {
+    const judge = judgesService.getById(parseInt(judgeId, 10));
+    if (!judge || judge.event_id !== parseInt(eventId, 10)) {
       return res.status(404).json({ error: 'Judge not found for this event' });
     }
 
-    db.prepare('DELETE FROM judges WHERE id = ?').run(judgeId);
+    judgesService.delete(parseInt(judgeId, 10));
     return res.status(204).send();
   } catch (err) {
-    console.error('[Error] Deleting judge:', err);
-    return res.status(500).json({ error: 'Failed to delete judge' });
+    next(err);
   }
 });
 

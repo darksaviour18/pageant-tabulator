@@ -1,71 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { judgesAPI } from '../api';
+import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
 
 export default function JudgesManager({ eventId }) {
-  const [judges, setJudges] = useState([]);
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    loadJudges();
-  }, [eventId]);
-
-  const loadJudges = async () => {
-    try {
-      const res = await judgesAPI.getAll(eventId);
-      setJudges(res.data);
-    } catch (err) {
-      console.error('Failed to load judges:', err);
-    }
-  };
+  const { items: judges, loading, error, success, handleCreate, handleDelete } = useCrudResource(
+    judgesAPI,
+    { collectionKey: eventId }
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
-    if (!name.trim()) {
-      setError('Judge name is required');
-      return;
-    }
-    if (!/^\d{4}$/.test(pin)) {
-      setError('PIN must be exactly 4 digits');
-      return;
-    }
+    if (!name.trim()) return;
+    if (!/^\d{4}$/.test(pin)) return;
 
-    setLoading(true);
-    try {
-      const seat_number = judges.length + 1;
-      await judgesAPI.create(eventId, {
-        seat_number,
-        name: name.trim(),
-        pin,
-      });
+    const seat_number = judges.length + 1;
+    const ok = await handleCreate({
+      seat_number,
+      name: name.trim(),
+      pin,
+    });
+
+    if (ok) {
       setName('');
       setPin('');
-      setSuccess(`Judge ${name} added as Seat #${seat_number}`);
-      await loadJudges();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add judge');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleDelete = async (judgeId, judgeName) => {
+  const handleRemove = async (judgeId, judgeName) => {
     if (!confirm(`Remove judge "${judgeName}"?`)) return;
-
-    try {
-      await judgesAPI.delete(eventId, judgeId);
-      setSuccess(`Judge "${judgeName}" removed`);
-      await loadJudges();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove judge');
-    }
+    await handleDelete(judgeId);
   };
 
   return (
@@ -138,7 +106,7 @@ export default function JudgesManager({ eventId }) {
                   <td className="py-3 px-4 text-slate-400 tracking-widest">••••</td>
                   <td className="py-3 px-4 text-right">
                     <button
-                      onClick={() => handleDelete(judge.id, judge.name)}
+                      onClick={() => handleRemove(judge.id, judge.name)}
                       className="text-red-500 hover:text-red-700 transition-colors p-1"
                       title="Remove judge"
                     >
