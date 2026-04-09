@@ -24,6 +24,9 @@ TASKS.MD
 .vscode/
 .idea/
 
+# Qwen Code local settings
+.qwen/
+
 # OS
 .DS_Store
 Thumbs.db
