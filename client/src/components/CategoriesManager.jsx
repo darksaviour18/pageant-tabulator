@@ -1,7 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { categoriesAPI, criteriaAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
-import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+
+/** Maximum acceptable total weight (1.0 = 100%). */
+const MAX_WEIGHT = 1;
+/** Float comparison tolerance. */
+const WEIGHT_TOLERANCE = 0.001;
 
 export default function CategoriesManager({ eventId }) {
   const { items: categories, loading: catLoading, error: catError, handleCreate: createCategory, handleDelete: deleteCategory } = useCrudResource(
@@ -124,7 +129,8 @@ function CategoryCard({ category, expanded, onToggle, onDelete }) {
 }
 
 /**
- * Criteria list with add/edit/delete for a single category.
+ * Criteria list with add/delete for a single category.
+ * Enforces that total weight must equal exactly 100% (1.0) before allowing new criteria.
  */
 function CriteriaList({ categoryId }) {
   const [criteria, setCriteria] = useState([]);
@@ -143,71 +149,104 @@ function CriteriaList({ categoryId }) {
   );
 
   const weightPercent = (totalWeight * 100).toFixed(1);
-  const isOver = totalWeight > 1;
+  const isComplete = Math.abs(totalWeight - MAX_WEIGHT) < WEIGHT_TOLERANCE;
+  const isOver = totalWeight > MAX_WEIGHT + WEIGHT_TOLERANCE;
+  const remainingWeight = Math.max(0, MAX_WEIGHT - totalWeight);
 
-  const loadCriteria = async () => {
-    try {
-      const res = await criteriaAPI.getAll(categoryId);
-      setCriteria(res.data);
-    } catch (err) {
-      console.error('Failed to load criteria:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useState(() => {
+  useEffect(() => {
+    const loadCriteria = async () => {
+      try {
+        const res = await criteriaAPI.getAll(categoryId);
+        setCriteria(res.data);
+      } catch (err) {
+        console.error('Failed to load criteria:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
     loadCriteria();
-  });
+  }, [categoryId]);
 
-  const handleAddCriterion = async (e) => {
-    e.preventDefault();
-    setError(null);
+  const handleAddCriterion = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setError(null);
 
-    const weight = parseFloat(newCriterion.weight);
-    if (isNaN(weight) || weight <= 0 || weight > 1) {
-      setError('Weight must be between 0 and 1 (e.g., 0.40 for 40%)');
-      return;
-    }
-    if (!newCriterion.name.trim()) {
-      setError('Criterion name is required');
-      return;
-    }
+      const weight = parseFloat(newCriterion.weight);
+      if (isNaN(weight) || weight <= 0 || weight > 1) {
+        setError('Weight must be between 0 and 1 (e.g., 0.40 for 40%)');
+        return;
+      }
+      if (!newCriterion.name.trim()) {
+        setError('Criterion name is required');
+        return;
+      }
 
-    try {
-      const res = await criteriaAPI.create(categoryId, {
-        name: newCriterion.name.trim(),
-        weight,
-        min_score: newCriterion.min_score,
-        max_score: newCriterion.max_score,
-        display_order: criteria.length + 1,
-      });
-      setCriteria((prev) => [...prev, res.data]);
-      setNewCriterion({ name: '', weight: '', min_score: 0, max_score: 10 });
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add criterion');
-    }
-  };
+      // Weight validation: prevent adding if it would exceed 100%
+      if (totalWeight + weight > MAX_WEIGHT + WEIGHT_TOLERANCE) {
+        setError(
+          `Adding this criterion would exceed 100% total weight. Current: ${weightPercent}%, available: ${(remainingWeight * 100).toFixed(1)}%`
+        );
+        return;
+      }
 
-  const handleDeleteCriterion = async (id) => {
-    try {
-      await criteriaAPI.delete(id);
-      setCriteria((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete criterion');
-    }
-  };
+      try {
+        const res = await criteriaAPI.create(categoryId, {
+          name: newCriterion.name.trim(),
+          weight,
+          min_score: newCriterion.min_score,
+          max_score: newCriterion.max_score,
+          display_order: criteria.length + 1,
+        });
+        setCriteria((prev) => [...prev, res.data]);
+        setNewCriterion({ name: '', weight: '', min_score: 0, max_score: 10 });
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to add criterion');
+      }
+    },
+    [newCriterion, totalWeight, weightPercent, remainingWeight, categoryId, criteria.length]
+  );
+
+  const handleDeleteCriterion = useCallback(
+    async (id) => {
+      try {
+        await criteriaAPI.delete(id);
+        setCriteria((prev) => prev.filter((c) => c.id !== id));
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to delete criterion');
+      }
+    },
+    [categoryId]
+  );
 
   if (loading) return <div className="text-slate-400 text-sm">Loading criteria...</div>;
 
   return (
     <div>
-      {/* Weight Summary */}
-      <div className={`flex items-center justify-between mb-4 text-sm ${isOver ? 'text-red-600' : 'text-slate-600'}`}>
-        <span>Total weight</span>
-        <span className={`font-semibold ${isOver ? 'text-red-600' : totalWeight === 1 ? 'text-green-600' : 'text-amber-600'}`}>
-          {weightPercent}% {totalWeight === 1 ? '✓' : isOver ? '(over 100%)' : ''}
-        </span>
+      {/* Weight Validation Banner */}
+      <div
+        className={`flex items-center justify-between mb-4 px-4 py-3 rounded-lg text-sm ${
+          isComplete
+            ? 'bg-green-50 text-green-700 border border-green-200'
+            : isOver
+            ? 'bg-red-50 text-red-700 border border-red-200'
+            : 'bg-amber-50 text-amber-700 border border-amber-200'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          {isComplete ? (
+            <CheckCircle2 className="w-4 h-4" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
+          <span className="font-medium">
+            {isComplete
+              ? 'Weights sum to exactly 100% — valid'
+              : isOver
+              ? `Total weight ${weightPercent}% exceeds 100%`
+              : `${weightPercent}% of 100% — ${(remainingWeight * 100).toFixed(1)}% remaining`}
+          </span>
+        </div>
       </div>
 
       {/* Criteria Table */}
@@ -216,6 +255,7 @@ function CriteriaList({ categoryId }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
+                <th className="text-left py-2 px-3 text-slate-500 font-medium">#</th>
                 <th className="text-left py-2 px-3 text-slate-500 font-medium">Criterion</th>
                 <th className="text-left py-2 px-3 text-slate-500 font-medium">Weight</th>
                 <th className="text-left py-2 px-3 text-slate-500 font-medium">Range</th>
@@ -223,8 +263,9 @@ function CriteriaList({ categoryId }) {
               </tr>
             </thead>
             <tbody>
-              {criteria.map((c) => (
+              {criteria.map((c, idx) => (
                 <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                  <td className="py-2 px-3 text-slate-400 text-xs">{idx + 1}</td>
                   <td className="py-2 px-3 text-slate-900 font-medium">{c.name}</td>
                   <td className="py-2 px-3 text-slate-700">{(c.weight * 100).toFixed(1)}%</td>
                   <td className="py-2 px-3 text-slate-500">
@@ -254,6 +295,7 @@ function CriteriaList({ categoryId }) {
           onChange={(e) => setNewCriterion((prev) => ({ ...prev, name: e.target.value }))}
           placeholder="Criterion name"
           className="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+          disabled={isComplete}
         />
         <input
           type="number"
@@ -264,6 +306,7 @@ function CriteriaList({ categoryId }) {
           onChange={(e) => setNewCriterion((prev) => ({ ...prev, weight: e.target.value }))}
           placeholder="Weight (0-1)"
           className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+          disabled={isComplete}
         />
         <div className="flex gap-2">
           <input
@@ -273,6 +316,7 @@ function CriteriaList({ categoryId }) {
             onChange={(e) => setNewCriterion((prev) => ({ ...prev, min_score: parseFloat(e.target.value) || 0 }))}
             placeholder="Min"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+            disabled={isComplete}
           />
           <input
             type="number"
@@ -281,16 +325,24 @@ function CriteriaList({ categoryId }) {
             onChange={(e) => setNewCriterion((prev) => ({ ...prev, max_score: parseFloat(e.target.value) || 10 }))}
             placeholder="Max"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+            disabled={isComplete}
           />
         </div>
         <button
           type="submit"
-          className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition-colors"
+          disabled={isComplete}
+          className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Add
         </button>
       </form>
+
+      {isComplete && (
+        <div className="text-xs text-green-600 mb-3 text-center">
+          Weight total is 100%. No more criteria can be added.
+        </div>
+      )}
 
       {error && (
         <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
