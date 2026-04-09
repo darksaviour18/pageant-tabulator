@@ -25,15 +25,15 @@ export default function ScoreSheet({
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Offline-first: read from IndexedDB
+  // Offline-first: read from IndexedDB — re-fetch when refetchKey changes
   const { getScore, isUnsaved, isSubmitted, loading: dbLoading } = useOfflineScores(
     judgeId,
     category.id,
-    { serverScores }
+    { serverScores, refetchKey }
   );
 
   // Auto-save: write to IndexedDB immediately, debounce POST to server
-  const { saveAndSync, syncNow, getPendingCount, conflict, resolveConflict } = useAutoSave({
+  const { saveAndSync, syncNow, getPendingCount, conflict, resolveConflict, refetchKey } = useAutoSave({
     judgeId,
     eventId,
     categoryId: category.id,

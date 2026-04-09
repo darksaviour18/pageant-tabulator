@@ -8,7 +8,7 @@ import { getScoresByJudgeAndCategory, saveScore, isCategorySubmitted } from '../
  * @param {number} categoryId
  * @param {{ serverScores?: Array, onSync?: (scores: Array) => void }} options
  */
-export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSync } = {}) {
+export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSync, refetchKey = 0 } = {}) {
   const [localScores, setLocalScores] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,7 @@ export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSyn
       }
     };
     loadScores();
-  }, [judgeId, categoryId]);
+  }, [judgeId, categoryId, refetchKey]);
 
   /**
    * Save a score to IndexedDB and update local state.
