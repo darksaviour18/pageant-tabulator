@@ -29,3 +29,19 @@ export const contestantsAPI = {
   update: (id, data) => api.patch(`/contestants/${id}`, data),
   delete: (id) => api.delete(`/contestants/${id}`),
 };
+
+// --- Categories ---
+export const categoriesAPI = {
+  create: (eventId, data) => api.post(`/events/${eventId}/categories`, data),
+  getAll: (eventId) => api.get(`/events/${eventId}/categories`),
+  update: (id, data) => api.patch(`/categories/${id}`, data),
+  delete: (id) => api.delete(`/categories/${id}`),
+};
+
+// --- Criteria ---
+export const criteriaAPI = {
+  create: (categoryId, data) => api.post(`/categories/${categoryId}/criteria`, data),
+  getAll: (categoryId) => api.get(`/categories/${categoryId}/criteria`),
+  update: (id, data) => api.patch(`/criteria/${id}`, data),
+  delete: (id) => api.delete(`/criteria/${id}`),
+};

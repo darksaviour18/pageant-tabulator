@@ -7,6 +7,8 @@ import { initDatabase, closeDb } from './db/init.js';
 import eventsRouter from './routes/events.js';
 import judgesRouter from './routes/judges.js';
 import contestantsRouter from './routes/contestants.js';
+import categoriesRouter from './routes/categories.js';
+import criteriaRouter from './routes/criteria.js';
 
 dotenv.config();
 
@@ -54,7 +56,10 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/events', eventsRouter);
 app.use('/api/events/:eventId/judges', judgesRouter);
 app.use('/api/events/:eventId/contestants', contestantsRouter);
+app.use('/api/events/:eventId/categories', categoriesRouter);
+app.use('/api/categories/:categoryId/criteria', criteriaRouter);
 app.use('/api/contestants', contestantsRouter);
+app.use('/api/criteria/:criterionId', criteriaRouter);
 
 // --- Error Handling Middleware ---
 // eslint-disable-next-line no-unused-vars

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { eventsAPI, judgesAPI, contestantsAPI } from '../api';
+import { eventsAPI } from '../api';
 import JudgesManager from '../components/JudgesManager';
 import ContestantsManager from '../components/ContestantsManager';
+import CategoriesManager from '../components/CategoriesManager';
 
 export default function EventSetup() {
   const [eventName, setEventName] = useState('');
@@ -143,6 +144,7 @@ export default function EventSetup() {
       {/* Managers (only shown when an event exists) */}
       {eventId && (
         <>
+          <CategoriesManager eventId={eventId} />
           <JudgesManager eventId={eventId} />
           <ContestantsManager eventId={eventId} />
         </>
