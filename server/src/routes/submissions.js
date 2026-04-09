@@ -3,6 +3,10 @@ import { getDb } from '../db/init.js';
 
 const router = Router();
 
+function getIo(req) {
+  return req.app.get('io');
+}
+
 /**
  * POST /api/submissions
  * Submit a category for a judge (lock further edits).
@@ -28,6 +32,12 @@ router.post('/', (req, res, next) => {
       .prepare('SELECT * FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judge_id, category_id);
 
+    // Broadcast submission event
+    const io = getIo(req);
+    if (io) {
+      io.emit('category_submitted', { judgeId: judge_id, categoryId: category_id });
+    }
+
     return res.status(201).json(submission);
   } catch (err) {
     next(err);
@@ -35,9 +45,10 @@ router.post('/', (req, res, next) => {
 });
 
 /**
- * POST /api/submissions/unlock — direct mount (Express 5 workaround)
+ * POST /api/submissions/unlock
+ * Admin unlocks a judge's category sheet for re-editing.
  */
-router.post('/unlock', (req, res, next) => {
+router.post('/unlock', async (req, res, next) => {
   const { judge_id, category_id } = req.body;
 
   if (!judge_id || !category_id) {
@@ -54,6 +65,14 @@ router.post('/unlock', (req, res, next) => {
     const submission = db
       .prepare('SELECT * FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judge_id, category_id);
+
+    // Notify the specific judge that their sheet was unlocked
+    const io = getIo(req);
+    if (io) {
+      // Find the judge's socket and notify
+      const { notifySheetUnlocked } = await import('../socket.js');
+      notifySheetUnlocked(io, judge_id, category_id);
+    }
 
     return res.json(submission || { judge_id, category_id, unlocked_by_admin: 1 });
   } catch (err) {

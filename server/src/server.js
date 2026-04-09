@@ -14,6 +14,7 @@ import { eventsService } from './services/eventsService.js';
 import scoringRouter from './routes/scoring.js';
 import scoresRouter from './routes/scores.js';
 import submissionsRouter from './routes/submissions.js';
+import { setupSocketHandlers } from './socket.js';
 
 dotenv.config();
 
@@ -47,6 +48,10 @@ const io = new Server(httpServer, {
 // --- Database Init ---
 const db = initDatabase();
 app.set('db', db);
+app.set('io', io);
+
+// --- Socket.io Event Handlers ---
+setupSocketHandlers(io, app);
 
 // --- Health Check ---
 app.get('/api/health', (_req, res) => {
@@ -114,15 +119,6 @@ app.post('/api/auth/judge', async (req, res, next) => {
 app.use((err, _req, res, _next) => {
   console.error('[Express Error]', err.message);
   return res.status(500).json({ error: 'Internal server error' });
-});
-
-// --- Socket.io Connection Handler ---
-io.on('connection', (socket) => {
-  console.log(`[Socket] Client connected: ${socket.id}`);
-
-  socket.on('disconnect', () => {
-    console.log(`[Socket] Client disconnected: ${socket.id}`);
-  });
 });
 
 // --- Server Start ---
