@@ -50,3 +50,12 @@ export const criteriaAPI = {
 export const authAPI = {
   login: (data) => api.post('/auth/judge', data),
 };
+
+// --- Scoring ---
+export const scoringAPI = {
+  getContext: (judgeId, eventId) => api.get(`/scoring/${judgeId}/event/${eventId}`),
+  getCategoryScores: (judgeId, eventId, categoryId) =>
+    api.get(`/scoring/${judgeId}/event/${eventId}/category/${categoryId}`),
+  submitScore: (data) => api.post('/scores', data),
+  batchSubmitScores: (scores) => api.post('/scores/batch', { scores }),
+};
