@@ -16,6 +16,8 @@ export default function JudgeDashboard() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [submittedCategories, setSubmittedCategories] = useState(new Set());
   const [unlockedCategory, setUnlockedCategory] = useState(null);
+  const [categoryScores, setCategoryScores] = useState([]);
+  const [loadingScores, setLoadingScores] = useState(false);
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -62,8 +64,18 @@ export default function JudgeDashboard() {
     navigate('/judge/login');
   };
 
-  const handleSelectCategory = (cat) => {
+  const handleSelectCategory = async (cat) => {
     setSelectedCategory(cat);
+    setLoadingScores(true);
+    try {
+      const res = await scoringAPI.getCategoryScores(session.judgeId, session.eventId, cat.id);
+      setCategoryScores(res.data.scores || []);
+    } catch (err) {
+      console.error('Failed to load category scores:', err);
+      setCategoryScores([]);
+    } finally {
+      setLoadingScores(false);
+    }
   };
 
   const handleBackToCategories = () => {
@@ -113,15 +125,21 @@ export default function JudgeDashboard() {
           </button>
         </div>
 
-        <ScoreSheet
-          judgeId={session.judgeId}
-          eventId={session.eventId}
-          category={selectedCategory}
-          contestants={scoringData.contestants}
-          serverScores={[]}
-          onBack={handleBackToCategories}
-          onSubmit={handleSubmitCategory}
-        />
+        {loadingScores ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-slate-500 text-lg">Loading scores...</div>
+          </div>
+        ) : (
+          <ScoreSheet
+            judgeId={session.judgeId}
+            eventId={session.eventId}
+            category={selectedCategory}
+            contestants={scoringData.contestants}
+            serverScores={categoryScores}
+            onBack={handleBackToCategories}
+            onSubmit={handleSubmitCategory}
+          />
+        )}
       </div>
     );
   }
