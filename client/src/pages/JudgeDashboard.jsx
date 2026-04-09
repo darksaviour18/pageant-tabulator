@@ -4,15 +4,18 @@ import { LogOut, Calendar, ChevronRight, AlertCircle } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
 import { scoringAPI, submissionsAPI } from '../api';
 import ScoreSheet from '../components/ScoreSheet';
+import { useSocket } from '../context/SocketContext';
 
 export default function JudgeDashboard() {
   const navigate = useNavigate();
+  const { onEvent } = useSocket();
   const [session, setSession] = useState(null);
   const [scoringData, setScoringData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [submittedCategories, setSubmittedCategories] = useState(new Set());
+  const [unlockedCategory, setUnlockedCategory] = useState(null);
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -23,6 +26,25 @@ export default function JudgeDashboard() {
     setSession(s);
     loadScoringContext(s.judgeId, s.eventId);
   }, [navigate]);
+
+  // Listen for admin unlock notifications
+  useEffect(() => {
+    const unsub = onEvent('sheet_unlocked', (data) => {
+      setSubmittedCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(data.categoryId);
+        return next;
+      });
+      setUnlockedCategory(data.categoryId);
+      // If currently viewing this category, re-select to refresh
+      if (selectedCategory?.id === data.categoryId) {
+        setSelectedCategory((prev) => prev ? { ...prev, _unlocked: true } : null);
+      }
+      // Auto-clear notification after 5s
+      setTimeout(() => setUnlockedCategory(null), 5000);
+    });
+    return unsub;
+  }, [onEvent, selectedCategory]);
 
   const loadScoringContext = async (judgeId, eventId) => {
     try {
@@ -131,6 +153,18 @@ export default function JudgeDashboard() {
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Unlock Notification Banner */}
+      {unlockedCategory && scoringData && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2 animate-pulse">
+          <AlertCircle className="w-4 h-4" />
+          <span className="font-medium">
+            Admin has unlocked{' '}
+            "{scoringData.categories.find((c) => c.id === unlockedCategory)?.name || 'a category'}".
+            You can now edit scores.
+          </span>
         </div>
       )}
 

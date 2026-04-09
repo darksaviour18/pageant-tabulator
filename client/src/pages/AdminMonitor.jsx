@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
+import { submissionsAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 import {
   Eye,
@@ -15,6 +16,8 @@ export default function AdminMonitor() {
   const [categories, setCategories] = useState([]);
   const [progress, setProgress] = useState({}); // { "judgeId:categoryId": { scored, total, submitted } }
   const [loading, setLoading] = useState(true);
+  const [unlocking, setUnlocking] = useState(null); // "judgeId:categoryId" while unlocking
+  const [unlockMsg, setUnlockMsg] = useState(null);
 
   useEffect(() => {
     loadInitialData();
@@ -87,6 +90,27 @@ export default function AdminMonitor() {
     };
   }, [onEvent]);
 
+  const handleUnlock = useCallback(async (judgeId, judgeName, categoryId, categoryName) => {
+    const key = `${judgeId}:${categoryId}`;
+    if (!confirm(`Unlock "${categoryName}" for ${judgeName}? They will be able to edit scores again.`)) return;
+
+    setUnlocking(key);
+    try {
+      await submissionsAPI.unlockCategory(judgeId, categoryId);
+      setProgress((prev) => ({
+        ...prev,
+        [key]: { ...(prev[key] || {}), submitted: false },
+      }));
+      setUnlockMsg(`Unlocked "${categoryName}" for ${judgeName}`);
+      setTimeout(() => setUnlockMsg(null), 4000);
+    } catch (err) {
+      setUnlockMsg(err.response?.data?.error || 'Failed to unlock');
+      setTimeout(() => setUnlockMsg(null), 4000);
+    } finally {
+      setUnlocking(null);
+    }
+  }, []);
+
   const timeSinceSync = useMemo(() => {
     if (!lastSync) return null;
     const diff = Math.floor((Date.now() - lastSync) / 1000);
@@ -127,7 +151,16 @@ export default function AdminMonitor() {
 
       {/* Judge Progress Cards */}
       {judges.length > 0 && categories.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <>
+          {/* Unlock Feedback Message */}
+          {unlockMsg && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+              <Unlock className="w-4 h-4" />
+              {unlockMsg}
+            </div>
+          )}
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {judges.map((judge) => (
             <div
               key={judge.id}
@@ -153,7 +186,19 @@ export default function AdminMonitor() {
                     <div key={cat.id}>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-sm font-medium text-slate-700">{cat.name}</span>
-                        <StatusBadge submitted={p.submitted} complete={isComplete} pct={pct} />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge submitted={p.submitted} complete={isComplete} pct={pct} />
+                          {p.submitted && (
+                            <button
+                              onClick={() => handleUnlock(judge.id, judge.name, cat.id, cat.name)}
+                              disabled={unlocking === key}
+                              className="p-1 text-slate-400 hover:text-amber-600 transition-colors disabled:opacity-50"
+                              title="Unlock sheet for re-editing"
+                            >
+                              <Unlock className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                         <div
@@ -179,6 +224,7 @@ export default function AdminMonitor() {
             </div>
           ))}
         </div>
+        </>
       ) : (
         <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
           <p className="text-slate-400">
