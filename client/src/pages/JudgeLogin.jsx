@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI, eventsAPI } from '../api';
+import { authAPI, eventsAPI, judgesAPI } from '../api';
 import { Crown, AlertCircle } from 'lucide-react';
 
 const JUDGE_SESSION_KEY = 'judge_session';
@@ -9,6 +9,8 @@ export default function JudgeLogin() {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState('');
+  const [judges, setJudges] = useState([]);
+  const [loadingJudges, setLoadingJudges] = useState(false);
   const [seatNumber, setSeatNumber] = useState('');
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -109,9 +111,22 @@ export default function JudgeLogin() {
               </label>
               <select
                 value={eventId}
-                onChange={(e) => {
-                  setEventId(e.target.value);
+                onChange={async (e) => {
+                  const id = e.target.value;
+                  setEventId(id);
                   setSeatNumber('');
+                  setJudges([]);
+                  if (!id) return;
+
+                  setLoadingJudges(true);
+                  try {
+                    const res = await judgesAPI.getAll(parseInt(id, 10));
+                    setJudges(res.data);
+                  } catch (err) {
+                    console.error('Failed to load judges:', err);
+                  } finally {
+                    setLoadingJudges(false);
+                  }
                 }}
                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white"
                 disabled={events.length === 0}
@@ -139,15 +154,18 @@ export default function JudgeLogin() {
                 value={seatNumber}
                 onChange={(e) => setSeatNumber(e.target.value)}
                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white"
-                disabled={!eventId}
+                disabled={!eventId || judges.length === 0 || loadingJudges}
               >
                 <option value="">Select your seat...</option>
-                {eventId &&
-                  Array.from({ length: 20 }, (_, i) => i + 1).map((num) => (
-                    <option key={num} value={num}>
-                      Judge {num}
-                    </option>
-                  ))}
+                {loadingJudges && <option disabled>Loading judges...</option>}
+                {judges.map((j) => (
+                  <option key={j.id} value={j.seat_number}>
+                    {j.name} (Seat #{j.seat_number})
+                  </option>
+                ))}
+                {!loadingJudges && eventId && judges.length === 0 && (
+                  <option disabled>No judges assigned</option>
+                )}
               </select>
             </div>
 
