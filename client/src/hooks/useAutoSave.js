@@ -27,6 +27,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
   const syncingRef = useRef(false);
   const { reconnectCount } = useSocket();
   const [conflict, setConflict] = useState(null); // { localCount, serverCount, onKeepLocal, onDiscardLocal }
+  const [refetchKey, setRefetchKey] = useState(0); // Bump to signal ScoreSheet to re-fetch
 
   const flushQueue = useCallback(async () => {
     if (queueRef.current.size === 0 || syncingRef.current) return;
@@ -161,6 +162,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
     }
 
     setConflict(null);
+    setRefetchKey((k) => k + 1); // Trigger ScoreSheet to re-fetch from server
   }, [conflict, judgeId, categoryId]);
 
   /**
@@ -203,6 +205,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
     getPendingCount: () => queueRef.current.size,
     conflict,
     resolveConflict,
+    refetchKey,
   };
 }
 

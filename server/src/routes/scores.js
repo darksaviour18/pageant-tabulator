@@ -85,6 +85,11 @@ router.post('/', (req, res, next) => {
       return res.status(rangeCheck.status).json({ error: rangeCheck.error });
     }
 
+    // Check if score already exists (for audit log accuracy)
+    const existing = db.prepare(
+      'SELECT id, score FROM scores WHERE judge_id = ? AND contestant_id = ? AND criteria_id = ?'
+    ).get(judge_id, contestant_id, criteria_id);
+
     const stmt = db.prepare(
       `INSERT INTO scores (event_id, judge_id, contestant_id, criteria_id, category_id, score, updated_at)
        VALUES (
@@ -102,18 +107,19 @@ router.post('/', (req, res, next) => {
       .prepare(
         'SELECT id, judge_id, contestant_id, criteria_id, category_id, score, updated_at FROM scores WHERE id = ?'
       )
-      .get(result.lastInsertRowid);
+      .get(existing ? existing.id : result.lastInsertRowid);
 
     // Get event_id for audit log
     const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
 
-    // 10.1.5: Audit log
+    // 10.1.5: Audit log — accurate action detection
     if (eventRow) {
-      const action = result.changes === 1 ? 'score_entered' : 'score_updated';
+      const action = existing ? 'score_updated' : 'score_entered';
       writeAuditLog(eventRow.event_id, judge_id, action, {
         contestant_id: saved.contestant_id,
         criteria_id: saved.criteria_id,
         score: saved.score,
+        previous_score: existing?.score ?? null,
       });
     }
 
@@ -149,13 +155,17 @@ router.post('/batch', (req, res, next) => {
   try {
     const db = getDb();
 
-    // Validate first entry's category lock (all entries should be same judge+category)
-    if (scores.length > 0) {
-      const first = scores[0];
-      if (first.judge_id && first.category_id) {
-        const lockCheck = checkCategoryAccessible(db, first.judge_id, first.category_id);
-        if (!lockCheck.valid) {
-          return res.status(lockCheck.status).json({ error: lockCheck.error });
+    // 10.1.1: Validate ALL entries' category lock status (batch may span categories)
+    const categoryChecks = new Set();
+    for (const s of scores) {
+      if (s.judge_id && s.category_id) {
+        const key = `${s.judge_id}:${s.category_id}`;
+        if (!categoryChecks.has(key)) {
+          categoryChecks.add(key);
+          const lockCheck = checkCategoryAccessible(db, s.judge_id, s.category_id);
+          if (!lockCheck.valid) {
+            return res.status(lockCheck.status).json({ error: lockCheck.error });
+          }
         }
       }
     }
