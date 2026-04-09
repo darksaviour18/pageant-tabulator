@@ -123,6 +123,7 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_scores_judge ON scores(judge_id);
     CREATE INDEX IF NOT EXISTS idx_scores_contestant ON scores(contestant_id);
     CREATE INDEX IF NOT EXISTS idx_scores_category ON scores(category_id);
+    CREATE INDEX IF NOT EXISTS idx_scores_judge_category ON scores(judge_id, category_id);
     CREATE INDEX IF NOT EXISTS idx_audit_log_event ON audit_log(event_id, timestamp);
   `);
 

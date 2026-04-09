@@ -33,7 +33,12 @@ router.post('/', (req, res, next) => {
       max_score: max_score ?? 10,
       display_order: display_order ?? Math.floor(Date.now() / 1000),
     });
-    return res.status(201).json(criterion);
+
+    // 10.3.4: Validate total weight after creation
+    const totalWeight = criteriaService.getTotalWeight(parseInt(categoryId, 10));
+    const warning = totalWeight > 1 ? ` Warning: total weight is ${(totalWeight * 100).toFixed(1)}%, exceeds 100%` : '';
+
+    return res.status(201).json({ ...criterion, weight_warning: warning || null });
   } catch (err) {
     next(err);
   }

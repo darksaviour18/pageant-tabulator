@@ -18,12 +18,17 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         start_url: '/',
-        // Placeholder icons — replace with actual 192x192 and 512x512 PNGs before production
         icons: [
           {
             src: '/icon.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any',
           },
         ],

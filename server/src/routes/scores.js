@@ -56,6 +56,30 @@ function validateScoreRange(db, criteriaId, score) {
 }
 
 /**
+ * GET /api/scores?judge_id=X&category_id=Y
+ * Get all scores for a specific judge and category.
+ */
+router.get('/', (req, res, next) => {
+  const { judge_id, category_id } = req.query;
+
+  if (!judge_id || !category_id) {
+    return res.status(400).json({ error: 'judge_id and category_id query params are required' });
+  }
+
+  try {
+    const db = getDb();
+    const scores = db
+      .prepare(
+        'SELECT contestant_id, criteria_id, score, updated_at FROM scores WHERE judge_id = ? AND category_id = ?'
+      )
+      .all(judge_id, category_id);
+    return res.json(scores);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/scores
  * Save or update a single score.
  */

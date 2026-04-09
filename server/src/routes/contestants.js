@@ -4,11 +4,15 @@ import { contestantsService } from '../services/contestantsService.js';
 
 const router = Router({ mergeParams: true });
 
+function getIo(req) {
+  return req.app.get('io');
+}
+
 /**
  * POST /api/events/:eventId/contestants
  * Add a new contestant to an event.
  */
-router.post('/', (req, res, next) => {
+router.post('/', async (req, res, next) => {
   const { eventId } = req.params;
   const { number, name } = req.body;
 
@@ -35,6 +39,14 @@ router.post('/', (req, res, next) => {
       number,
       name: name.trim(),
     });
+
+    // 10.3.5: Broadcast contestant added
+    const io = getIo(req);
+    if (io) {
+      const { broadcastContestantAdded } = await import('../socket.js');
+      broadcastContestantAdded(io, contestant);
+    }
+
     return res.status(201).json(contestant);
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE constraint')) {
