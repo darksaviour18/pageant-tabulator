@@ -15,6 +15,7 @@ export function SocketProvider({ children }) {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  const [reconnectCount, setReconnectCount] = useState(0);
   const heartbeatTimerRef = useRef(null);
 
   useEffect(() => {
@@ -49,14 +50,21 @@ export function SocketProvider({ children }) {
       setLastSync(Date.now());
     });
 
-    socket.on('disconnect', () => {
-      console.log('[Socket] Disconnected');
+    socket.on('disconnect', (reason) => {
+      console.log('[Socket] Disconnected:', reason);
       setConnected(false);
       setLastSync(null);
       if (heartbeatTimerRef.current) {
         clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = null;
       }
+    });
+
+    // 10.1.3: Emit reconnect event for listeners
+    socket.on('reconnect', (attempt) => {
+      console.log(`[Socket] Reconnected after ${attempt} attempts`);
+      setReconnectCount((prev) => prev + 1);
+      socket.emit('authenticate', { role: 'admin' });
     });
 
     socket.on('connect_error', (err) => {
@@ -89,7 +97,7 @@ export function SocketProvider({ children }) {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, connected, lastSync, onEvent, emit }}>
+    <SocketContext.Provider value={{ socket: socketRef.current, connected, lastSync, reconnectCount, onEvent, emit }}>
       {children}
     </SocketContext.Provider>
   );

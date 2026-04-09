@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { saveScore, markScoreSynced, db } from '../db';
 import { scoresAPI } from '../api';
+import { useSocket } from '../context/SocketContext';
 
 const SYNC_DEBOUNCE_MS = 250;
 
@@ -19,6 +20,7 @@ export function useAutoSave({ judgeId, categoryId }) {
   const queueRef = useRef(new Map()); // key: "contestantId:criteriaId" → score
   const timerRef = useRef(null);
   const syncingRef = useRef(false);
+  const { reconnectCount } = useSocket();
 
   const flushQueue = useCallback(async () => {
     if (queueRef.current.size === 0 || syncingRef.current) return;
@@ -67,6 +69,13 @@ export function useAutoSave({ judgeId, categoryId }) {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
+
+  // 10.1.3: Flush pending scores on socket reconnect
+  useEffect(() => {
+    if (reconnectCount > 0 && queueRef.current.size > 0) {
+      flushQueue();
+    }
+  }, [reconnectCount, flushQueue]);
 
   /**
    * Save a score: write to IndexedDB immediately, queue for server sync.
