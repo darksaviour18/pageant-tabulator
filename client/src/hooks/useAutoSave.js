@@ -1,5 +1,5 @@
-import { useCallback, useRef, useEffect } from 'react';
-import { saveScore, markScoreSynced, db } from '../db';
+import { useCallback, useRef, useEffect, useState } from 'react';
+import { saveScore, markScoreSynced, getUnsyncedScores, db } from '../db';
 import { scoresAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 
@@ -13,14 +13,20 @@ const SYNC_DEBOUNCE_MS = 250;
  *   2. Debounce 250ms → batch POST to server
  *   3. On success → mark as synced
  *
- * @param {{ judgeId: number, categoryId: number }} params
- * @returns {{ syncQueue: Map, syncNow: () => Promise<void> }}
+ * On reconnect:
+ *   1. Fetch server scores for this category
+ *   2. Compare with local scores
+ *   3. If conflict, set conflict state for modal
+ *
+ * @param {{ judgeId: number, eventId: number, categoryId: number }} params
+ * @returns {{ syncQueue: Map, syncNow: () => Promise<void>, conflict, resolveConflict }}
  */
-export function useAutoSave({ judgeId, categoryId }) {
+export function useAutoSave({ judgeId, eventId, categoryId }) {
   const queueRef = useRef(new Map()); // key: "contestantId:criteriaId" → score
   const timerRef = useRef(null);
   const syncingRef = useRef(false);
   const { reconnectCount } = useSocket();
+  const [conflict, setConflict] = useState(null); // { localCount, serverCount, onKeepLocal, onDiscardLocal }
 
   const flushQueue = useCallback(async () => {
     if (queueRef.current.size === 0 || syncingRef.current) return;
@@ -70,12 +76,92 @@ export function useAutoSave({ judgeId, categoryId }) {
     };
   }, []);
 
-  // 10.1.3: Flush pending scores on socket reconnect
+  // 10.1.3 + 10.1.4: On reconnect, check for conflicts then flush
   useEffect(() => {
-    if (reconnectCount > 0 && queueRef.current.size > 0) {
-      flushQueue();
+    if (reconnectCount <= 0 || !judgeId || !eventId || !categoryId) return;
+
+    const checkConflict = async () => {
+      try {
+        // Get local scores
+        const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
+        if (localScores.length === 0) {
+          // No local scores, just flush any pending queue
+          if (queueRef.current.size > 0) flushQueue();
+          return;
+        }
+
+        // Fetch server scores
+        const res = await scoresAPI.getCategoryScores(judgeId, eventId, categoryId);
+        const serverScores = res.data?.scores || [];
+
+        // Compare: build sets of (contestantId, criteriaId) → score
+        const localMap = new Map(localScores.map(s => [`${s.contestantId}:${s.criteriaId}`, s.score]));
+        const serverMap = new Map(serverScores.map(s => [`${s.contestant_id}:${s.criteria_id}`, s.score]));
+
+        // Check for differences
+        let hasConflict = false;
+        for (const [key, localScore] of localMap) {
+          const serverScore = serverMap.get(key);
+          if (serverScore !== undefined && Math.abs(serverScore - localScore) > 0.01) {
+            hasConflict = true;
+            break;
+          }
+        }
+
+        if (hasConflict) {
+          setConflict({
+            localCount: localScores.length,
+            serverCount: serverScores.length,
+          });
+        } else if (queueRef.current.size > 0) {
+          flushQueue();
+        }
+      } catch (err) {
+        console.warn('[useAutoSave] Conflict check failed:', err);
+        // Still try to flush pending scores
+        if (queueRef.current.size > 0) flushQueue();
+      }
+    };
+
+    checkConflict();
+  }, [reconnectCount, judgeId, eventId, categoryId, flushQueue]);
+
+  /**
+   * Resolve a conflict: keep local scores (overwrite server) or discard local.
+   */
+  const resolveConflict = useCallback(async (action) => {
+    if (!conflict) return;
+
+    if (action === 'keep-local') {
+      // Overwrite server with local scores
+      const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
+      const batch = localScores.filter(s => s.score != null).map(s => ({
+        judge_id: s.judgeId,
+        contestant_id: s.contestantId,
+        criteria_id: s.criteriaId,
+        category_id: s.categoryId,
+        score: s.score,
+      }));
+
+      if (batch.length > 0) {
+        try {
+          await scoresAPI.batchSubmitScores(batch);
+          // Mark all as synced
+          for (const s of localScores) {
+            if (!s.synced) await db.scores.update(s.id, { synced: true });
+          }
+        } catch (err) {
+          console.warn('[useAutoSave] Failed to push local scores to server:', err);
+        }
+      }
+    } else if (action === 'discard-local') {
+      // Clear local scores for this category, they'll be re-fetched from server
+      const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
+      await db.scores.bulkDelete(localScores.map(s => s.id));
     }
-  }, [reconnectCount, flushQueue]);
+
+    setConflict(null);
+  }, [conflict, judgeId, categoryId]);
 
   /**
    * Save a score: write to IndexedDB immediately, queue for server sync.
@@ -115,6 +201,8 @@ export function useAutoSave({ judgeId, categoryId }) {
     saveAndSync,
     syncNow,
     getPendingCount: () => queueRef.current.size,
+    conflict,
+    resolveConflict,
   };
 }
 

@@ -9,6 +9,7 @@ import { useOfflineScores } from '../hooks/useOfflineScores';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import SubmitConfirmModal from './SubmitConfirmModal';
+import ConflictModal from './ConflictModal';
 
 export default function ScoreSheet({
   judgeId,
@@ -32,8 +33,9 @@ export default function ScoreSheet({
   );
 
   // Auto-save: write to IndexedDB immediately, debounce POST to server
-  const { saveAndSync, syncNow, getPendingCount } = useAutoSave({
+  const { saveAndSync, syncNow, getPendingCount, conflict, resolveConflict } = useAutoSave({
     judgeId,
+    eventId,
     categoryId: category.id,
   });
 
@@ -264,6 +266,16 @@ export default function ScoreSheet({
           categoryName={category.name}
           onConfirm={handleConfirmSubmit}
           onCancel={() => setShowSubmitModal(false)}
+        />
+      )}
+
+      {/* Conflict Resolution Modal */}
+      {conflict && (
+        <ConflictModal
+          localCount={conflict.localCount}
+          serverCount={conflict.serverCount}
+          onKeepLocal={() => resolveConflict('keep-local')}
+          onDiscardLocal={() => resolveConflict('discard-local')}
         />
       )}
     </div>
