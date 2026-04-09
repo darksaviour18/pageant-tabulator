@@ -4,6 +4,13 @@ import { getDb } from '../db/init.js';
 const router = Router();
 
 /**
+ * Helper: get the io instance from the app.
+ */
+function getIo(req) {
+  return req.app.get('io');
+}
+
+/**
  * POST /api/scores
  * Save or update a single score.
  * Uses ON CONFLICT for upsert.
@@ -40,6 +47,18 @@ router.post('/', (req, res, next) => {
         'SELECT id, judge_id, contestant_id, criteria_id, category_id, score, updated_at FROM scores WHERE id = ?'
       )
       .get(result.lastInsertRowid);
+
+    // Broadcast real-time score update to admins
+    const io = getIo(req);
+    if (io) {
+      io.to('admins').emit('score_updated', {
+        judge_id: saved.judge_id,
+        contestant_id: saved.contestant_id,
+        criteria_id: saved.criteria_id,
+        category_id: saved.category_id,
+        score: saved.score,
+      });
+    }
 
     return res.status(201).json(saved);
   } catch (err) {
