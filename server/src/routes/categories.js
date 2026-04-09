@@ -4,6 +4,10 @@ import { categoriesService } from '../services/categoriesService.js';
 
 const router = Router({ mergeParams: true });
 
+function getIo(req) {
+  return req.app.get('io');
+}
+
 /**
  * POST /api/events/:eventId/categories
  * Create a new category for an event.
@@ -52,7 +56,7 @@ router.get('/', (req, res, next) => {
  * PATCH /api/categories/:categoryId
  * Update a category.
  */
-router.patch('/:categoryId', (req, res, next) => {
+router.patch('/:categoryId', async (req, res, next) => {
   const { categoryId } = req.params;
   const { name, display_order, is_locked } = req.body;
 
@@ -67,6 +71,16 @@ router.patch('/:categoryId', (req, res, next) => {
       display_order,
       is_locked,
     });
+
+    // 10.3.5: Broadcast category lock/unlock
+    if (is_locked !== undefined) {
+      const io = getIo(req);
+      if (io) {
+        const { broadcastCategoryLock } = await import('../socket.js');
+        broadcastCategoryLock(io, updated.id, !!is_locked);
+      }
+    }
+
     return res.json(updated);
   } catch (err) {
     next(err);
