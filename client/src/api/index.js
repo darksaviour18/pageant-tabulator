@@ -45,3 +45,8 @@ export const criteriaAPI = {
   update: (id, data) => api.patch(`/criteria/${id}`, data),
   delete: (id) => api.delete(`/criteria/${id}`),
 };
+
+// --- Auth ---
+export const authAPI = {
+  login: (data) => api.post('/auth/judge', data),
+};
