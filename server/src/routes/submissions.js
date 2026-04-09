@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db/init.js';
+import { writeAuditLog } from '../services/auditService.js';
 
 const router = Router();
 
@@ -31,6 +32,12 @@ router.post('/', (req, res, next) => {
     const submission = db
       .prepare('SELECT * FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judge_id, category_id);
+
+    // 10.1.5: Audit log — category submitted
+    const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
+    if (eventRow) {
+      writeAuditLog(eventRow.event_id, judge_id, 'category_submitted', { category_id });
+    }
 
     // Broadcast submission event
     const io = getIo(req);
@@ -65,6 +72,12 @@ router.post('/unlock', async (req, res, next) => {
     const submission = db
       .prepare('SELECT * FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judge_id, category_id);
+
+    // 10.1.5: Audit log — category unlocked
+    const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
+    if (eventRow) {
+      writeAuditLog(eventRow.event_id, null, 'category_unlocked', { judge_id, category_id });
+    }
 
     // Notify the specific judge that their sheet was unlocked
     const io = getIo(req);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db/init.js';
+import { writeAuditLog } from '../services/auditService.js';
 
 const router = Router();
 
@@ -102,6 +103,19 @@ router.post('/', (req, res, next) => {
         'SELECT id, judge_id, contestant_id, criteria_id, category_id, score, updated_at FROM scores WHERE id = ?'
       )
       .get(result.lastInsertRowid);
+
+    // Get event_id for audit log
+    const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
+
+    // 10.1.5: Audit log
+    if (eventRow) {
+      const action = result.changes === 1 ? 'score_entered' : 'score_updated';
+      writeAuditLog(eventRow.event_id, judge_id, action, {
+        contestant_id: saved.contestant_id,
+        criteria_id: saved.criteria_id,
+        score: saved.score,
+      });
+    }
 
     // Broadcast real-time score update to admins
     const io = getIo(req);
