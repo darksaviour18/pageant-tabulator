@@ -11,6 +11,7 @@ import categoriesRouter from './routes/categories.js';
 import criteriaRouter from './routes/criteria.js';
 import { authService } from './services/authService.js';
 import { eventsService } from './services/eventsService.js';
+import scoringRouter from './routes/scoring.js';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/events/:eventId/categories', categoriesRouter);
 app.use('/api/categories/:categoryId/criteria', criteriaRouter);
 app.use('/api/contestants', contestantsRouter);
 app.use('/api/criteria/:criterionId', criteriaRouter);
+app.use('/api/scoring', scoringRouter);
 
 // --- Judge Auth Route (direct mount to avoid Express 5 Router issue) ---
 app.post('/api/auth/judge', async (req, res, next) => {

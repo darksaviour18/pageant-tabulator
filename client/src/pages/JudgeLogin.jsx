@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI, eventsAPI } from '../api';
 import { Crown, AlertCircle } from 'lucide-react';
 
+const JUDGE_SESSION_KEY = 'judge_session';
+
 export default function JudgeLogin() {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
@@ -55,7 +57,7 @@ export default function JudgeLogin() {
 
       // Store session in sessionStorage
       sessionStorage.setItem(
-        'judge_session',
+        JUDGE_SESSION_KEY,
         JSON.stringify({
           judgeId: res.data.judge.id,
           eventId: res.data.event.id,
