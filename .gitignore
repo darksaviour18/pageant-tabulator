@@ -1,8 +1,11 @@
 # Dependencies
 node_modules/
+server/node_modules/
+client/node_modules/
 
 # Build output
 dist/
+client/dist/
 
 # Environment variables
 .env
@@ -13,7 +16,7 @@ dist/
 *.db
 *.db-journal
 *.db-wal
-data/
+server/data/
 
 # Project docs (local only, not versioned for security)
 QWEN.md
