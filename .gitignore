@@ -14,8 +14,10 @@ dist/
 *.db-journal
 *.db-wal
 
-# Markdown files
-*.md
+# Project docs (local only, not versioned for security)
+QWEN.md
+SPEC.md
+TASKS.MD
 
 # IDE
 .vscode/
