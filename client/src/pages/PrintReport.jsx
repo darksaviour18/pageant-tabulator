@@ -13,7 +13,12 @@ export default function PrintReport() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    eventsAPI.getAll().then((res) => setEvents(res.data)).catch(console.error);
+    eventsAPI.getAll()
+      .then((res) => setEvents(res.data || []))
+      .catch((err) => {
+        console.error('Failed to load events:', err);
+        setError('Failed to load events. Please try again.');
+      });
   }, []);
 
   const handleEventChange = async (e) => {
