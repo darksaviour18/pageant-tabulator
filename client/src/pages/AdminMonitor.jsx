@@ -42,13 +42,27 @@ export default function AdminMonitor() {
       const categoriesRes = await categoriesAPI.getAll(activeEvent.id);
       setCategories(categoriesRes.data);
 
-      // Initialize progress state
+      // 10.2.8: Fetch existing scores to populate progress bars
       const initialProgress = {};
       for (const judge of judgesRes.data) {
         for (const cat of categoriesRes.data) {
+          const criteriaCount = cat.criteria?.length || 0;
+
+          // Fetch existing scores for this judge+category
+          let scoredCount = 0;
+          try {
+            const scoresRes = await fetch(`/api/scoring/${judge.id}/event/${activeEvent.id}/category/${cat.id}`);
+            if (scoresRes.ok) {
+              const data = await scoresRes.json();
+              scoredCount = data.scores?.length || 0;
+            }
+          } catch {
+            // Ignore fetch errors, default to 0
+          }
+
           initialProgress[`${judge.id}:${cat.id}`] = {
-            scored: 0,
-            total: cat.criteria?.length || 0,
+            scored: scoredCount,
+            total: criteriaCount,
             submitted: false,
           };
         }
