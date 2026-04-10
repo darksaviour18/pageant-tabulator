@@ -103,6 +103,13 @@ router.post('/', (req, res, next) => {
       return res.status(lockCheck.status).json({ error: lockCheck.error });
     }
 
+    // 11.1.1: Verify judge and category belong to the same event
+    const judgeEvent = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
+    const catEvent = db.prepare('SELECT event_id FROM categories WHERE id = ?').get(category_id);
+    if (!judgeEvent || !catEvent || judgeEvent.event_id !== catEvent.event_id) {
+      return res.status(400).json({ error: 'Judge and category must belong to the same event' });
+    }
+
     // 10.1.2: Validate score range
     const rangeCheck = validateScoreRange(db, criteria_id, score);
     if (!rangeCheck.valid) {
@@ -189,6 +196,22 @@ router.post('/batch', (req, res, next) => {
           const lockCheck = checkCategoryAccessible(db, s.judge_id, s.category_id);
           if (!lockCheck.valid) {
             return res.status(lockCheck.status).json({ error: lockCheck.error });
+          }
+        }
+      }
+    }
+
+    // 11.1.1: Validate ALL entries belong to the same event
+    const eventChecks = new Set();
+    for (const s of scores) {
+      if (s.judge_id && s.category_id) {
+        const key = `${s.judge_id}:${s.category_id}`;
+        if (!eventChecks.has(key)) {
+          eventChecks.add(key);
+          const judgeEvent = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(s.judge_id);
+          const catEvent = db.prepare('SELECT event_id FROM categories WHERE id = ?').get(s.category_id);
+          if (!judgeEvent || !catEvent || judgeEvent.event_id !== catEvent.event_id) {
+            return res.status(400).json({ error: `Judge and category must belong to the same event (entry ${s.judge_id}/${s.category_id})` });
           }
         }
       }

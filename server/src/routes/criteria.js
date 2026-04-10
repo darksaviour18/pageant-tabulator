@@ -73,6 +73,11 @@ router.patch('/:criterionId', (req, res, next) => {
       return res.status(404).json({ error: 'Criterion not found' });
     }
 
+    // 11.1.2: Validate weight range on update
+    if (weight !== undefined && (typeof weight !== 'number' || weight < 0 || weight > 1)) {
+      return res.status(400).json({ error: 'Weight must be a number between 0 and 1 (representing 0% to 100%)' });
+    }
+
     const updated = criteriaService.update(parseInt(criterionId, 10), {
       name: name?.trim(),
       weight,
