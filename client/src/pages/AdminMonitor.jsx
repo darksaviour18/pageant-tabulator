@@ -18,6 +18,7 @@ export default function AdminMonitor() {
   const [loading, setLoading] = useState(true);
   const [unlocking, setUnlocking] = useState(null); // "judgeId:categoryId" while unlocking
   const [unlockMsg, setUnlockMsg] = useState(null);
+  const [lockStatus, setLockStatus] = useState({}); // { categoryId: isLocked }
 
   useEffect(() => {
     loadInitialData();
@@ -44,6 +45,7 @@ export default function AdminMonitor() {
 
       // 10.2.8: Fetch existing scores to populate progress bars
       const initialProgress = {};
+      const initialLockStatus = {};
       for (const judge of judgesRes.data) {
         for (const cat of categoriesRes.data) {
           const criteriaCount = cat.criteria?.length || 0;
@@ -68,6 +70,7 @@ export default function AdminMonitor() {
         }
       }
       setProgress(initialProgress);
+      setLockStatus(initialLockStatus);
     } catch (err) {
       console.error('Failed to load monitor data:', err);
     } finally {
@@ -125,6 +128,23 @@ export default function AdminMonitor() {
     }
   }, []);
 
+  // 10.2.7: Toggle category-level lock/unlock
+  const handleToggleCategoryLock = useCallback(async (cat) => {
+    const newLocked = !lockStatus[cat.id];
+    const action = newLocked ? 'Lock' : 'Unlock';
+    if (!confirm(`${action} "${cat.name}" for ALL judges?`)) return;
+
+    try {
+      const res = await categoriesAPI.update(cat.id, { is_locked: newLocked });
+      setLockStatus((prev) => ({ ...prev, [cat.id]: res.data.is_locked }));
+      setUnlockMsg(`${cat.name} ${newLocked ? 'locked' : 'unlocked'} for all judges`);
+      setTimeout(() => setUnlockMsg(null), 4000);
+    } catch (err) {
+      setUnlockMsg(err.response?.data?.error || `Failed to ${action.toLowerCase()} ${cat.name}`);
+      setTimeout(() => setUnlockMsg(null), 4000);
+    }
+  }, [lockStatus]);
+
   const timeSinceSync = useMemo(() => {
     if (!lastSync) return null;
     const diff = Math.floor((Date.now() - lastSync) / 1000);
@@ -160,6 +180,30 @@ export default function AdminMonitor() {
           <span className="text-sm text-slate-600">
             {connected ? `Connected · Last sync: ${timeSinceSync || '...'}` : 'Disconnected'}
           </span>
+        </div>
+      </div>
+
+      {/* Category Lock Toggles — 10.2.7 */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Category Controls</h3>
+        <div className="flex flex-wrap gap-3">
+          {categories.map((cat) => {
+            const isLocked = lockStatus[cat.id] || cat.is_locked;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => handleToggleCategoryLock(cat)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isLocked
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200'
+                }`}
+              >
+                {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                {cat.name} {isLocked ? '(Locked)' : '(Open)'}
+              </button>
+            );
+          })}
         </div>
       </div>
 

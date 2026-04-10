@@ -114,7 +114,7 @@ export default function ScoreSheet({
               maxScore={crit.max_score}
               isSaved={saved}
               isUnsaved={unsaved}
-              isReadOnly={isReadOnly}
+              isReadOnly={effectiveReadOnly}
               onChange={(score) => handleScoreChange(contestant.id, crit.id, score)}
               rowIndex={row.index}
               colIndex={idx}
@@ -156,6 +156,19 @@ export default function ScoreSheet({
     return unsub;
   }, [onEvent, onContestantsChange]);
 
+  // 10.2.7: Listen for category_locked event — force re-read of isReadOnly
+  const [categoryLocked, setCategoryLocked] = useState(false);
+  useEffect(() => {
+    const unsub = onEvent('category_locked', (data) => {
+      if (data.categoryId === category.id) {
+        setCategoryLocked(data.isLocked);
+      }
+    });
+    return unsub;
+  }, [onEvent, category.id]);
+
+  const effectiveReadOnly = isReadOnly || categoryLocked;
+
   if (dbLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -182,14 +195,14 @@ export default function ScoreSheet({
               Saving {getPendingCount()}...
             </span>
           )}
-          {isReadOnly && (
+          {effectiveReadOnly && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
               {isSubmitted ? 'Submitted' : 'Locked by Admin'}
             </span>
           )}
           <button
             onClick={handleInitiateSubmit}
-            disabled={!allFilled || isReadOnly}
+            disabled={!allFilled || effectiveReadOnly}
             className="flex items-center gap-2 px-5 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
           >
             {submitting ? (
@@ -224,7 +237,7 @@ export default function ScoreSheet({
       </div>
 
       {/* Read-Only Banner */}
-      {isReadOnly && (
+      {effectiveReadOnly && (
         <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
           <AlertCircle className="w-4 h-4 text-slate-500 flex-shrink-0" />
           <span className="text-sm text-slate-600 font-medium">
