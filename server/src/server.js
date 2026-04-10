@@ -17,6 +17,33 @@ import submissionsRouter from './routes/submissions.js';
 import reportsRouter from './routes/reports.js';
 import { setupSocketHandlers } from './socket.js';
 
+// 11.1.4: Rate limiter for judge auth (5 attempts per 30s per event+seat)
+const authAttempts = new Map(); // key: "eventId:seatNumber" → { count, resetAt }
+const AUTH_MAX_ATTEMPTS = 5;
+const AUTH_WINDOW_MS = 30000;
+
+function checkAuthRateLimit(eventId, seatNumber) {
+  const key = `${eventId}:${seatNumber}`;
+  const now = Date.now();
+  const entry = authAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    authAttempts.set(key, { count: 1, resetAt: now + AUTH_WINDOW_MS });
+    return { allowed: true };
+  }
+  entry.count++;
+  if (entry.count > AUTH_MAX_ATTEMPTS) {
+    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  return { allowed: true };
+}
+
+function recordAuthAttempt(eventId, seatNumber, success) {
+  const key = `${eventId}:${seatNumber}`;
+  if (success) {
+    authAttempts.delete(key);
+  }
+}
+
 dotenv.config();
 
 const app = express();
@@ -93,6 +120,12 @@ app.post('/api/auth/judge', async (req, res, next) => {
     return res.status(400).json({ error: 'pin must be exactly 4 digits' });
   }
 
+  // 11.1.4: Rate limiting
+  const rateCheck = checkAuthRateLimit(event_id, seat_number);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: `Too many failed attempts. Try again in ${rateCheck.retryAfter}s` });
+  }
+
   try {
     const event = eventsService.getById(event_id);
     if (!event) {
@@ -104,8 +137,11 @@ app.post('/api/auth/judge', async (req, res, next) => {
 
     const judge = await authService.authenticateJudge(event_id, seat_number, pin);
     if (!judge) {
+      recordAuthAttempt(event_id, seat_number, false);
       return res.status(401).json({ error: 'Invalid seat number or PIN' });
     }
+
+    recordAuthAttempt(event_id, seat_number, true);
 
     return res.json({
       judge,
