@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
 import NotFound from './pages/NotFound';
 import JudgeLogin from './pages/JudgeLogin';
 import JudgeDashboard from './pages/JudgeDashboard';
@@ -9,6 +10,9 @@ import ProtectedRoute, { JudgeProtectedRoute } from './components/ProtectedRoute
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Admin login — no layout, no protection */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+
       {/* Admin routes — wrapped in Layout + ProtectedRoute */}
       <Route path="/" element={
         <ProtectedRoute>

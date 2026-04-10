@@ -19,11 +19,19 @@ export function SocketProvider({ children }) {
   const heartbeatTimerRef = useRef(null);
 
   useEffect(() => {
+    // Check if we're on an admin route and have admin session
+    const isAdmin = window.location.pathname === '/' || window.location.pathname.startsWith('/');
+    const adminSecret = sessionStorage.getItem('admin_secret');
+
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
+      auth: {
+        role: isAdmin && adminSecret ? 'admin' : 'judge',
+        token: isAdmin && adminSecret ? adminSecret : undefined,
+      },
     });
 
     socketRef.current = socket;

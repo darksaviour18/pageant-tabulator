@@ -22,21 +22,24 @@ const connectedJudges = new Map();
 const connectedAdmins = new Map();
 
 /**
- * 10.1.6: Socket.io authentication middleware.
- * Validates that the client provides valid credentials on connection.
+ * 10.1.6 + 11.4.2: Socket.io authentication middleware.
+ * Validates that the client provides a valid session token on connection.
+ * For admin connections, verifies the admin session token.
+ * For judge connections, requires authenticate event after connection.
  */
 function authMiddleware(socket, next) {
   const { token, role } = socket.handshake.auth;
 
-  // If a JWT token is provided (future JWT integration), validate it here
-  if (token) {
-    // TODO: Implement JWT verification when JWT auth is added
-    // For now, accept any token and proceed
+  if (role === 'admin') {
+    // Admin must provide a valid session token matching ADMIN_SECRET
+    const adminSecret = process.env.ADMIN_SECRET || 'admin123';
+    if (!token || token !== adminSecret) {
+      return next(new Error('Admin authentication failed'));
+    }
     return next();
   }
 
-  // For LAN deployment without JWT, allow connections and require
-  // explicit authenticate event after connection
+  // Judge connections: allow connection, will authenticate via 'authenticate' event
   return next();
 }
 
