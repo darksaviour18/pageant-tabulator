@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import axios from 'axios';
 import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
 import { submissionsAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
@@ -43,32 +44,40 @@ export default function AdminMonitor() {
       const categoriesRes = await categoriesAPI.getAll(activeEvent.id);
       setCategories(categoriesRes.data);
 
-      // 10.2.8: Fetch existing scores to populate progress bars
+      // 10.2.8 + 11.3.1: Fetch existing scores with AbortController + timeout
       const initialProgress = {};
       const initialLockStatus = {};
+      const fetchPromises = [];
+
       for (const judge of judgesRes.data) {
         for (const cat of categoriesRes.data) {
           const criteriaCount = cat.criteria?.length || 0;
+          const key = `${judge.id}:${cat.id}`;
 
-          // Fetch existing scores for this judge+category
-          let scoredCount = 0;
-          try {
-            const scoresRes = await fetch(`/api/scoring/${judge.id}/event/${activeEvent.id}/category/${cat.id}`);
-            if (scoresRes.ok) {
-              const data = await scoresRes.json();
-              scoredCount = data.scores?.length || 0;
-            }
-          } catch {
-            // Ignore fetch errors, default to 0
-          }
+          initialProgress[key] = { scored: 0, total: criteriaCount, submitted: false };
 
-          initialProgress[`${judge.id}:${cat.id}`] = {
-            scored: scoredCount,
-            total: criteriaCount,
-            submitted: false,
-          };
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+
+          fetchPromises.push(
+            axios
+              .get(`/api/scoring/${judge.id}/event/${activeEvent.id}/category/${cat.id}`, {
+                signal: controller.signal,
+              })
+              .then((res) => {
+                initialProgress[key].scored = res.data.scores?.length || 0;
+              })
+              .catch(() => {
+                // Timeout or error — keep scored at 0
+              })
+              .finally(() => clearTimeout(timeout))
+          );
         }
       }
+
+      // Wait for all score fetches (with individual timeouts)
+      await Promise.allSettled(fetchPromises);
+
       setProgress(initialProgress);
       setLockStatus(initialLockStatus);
     } catch (err) {

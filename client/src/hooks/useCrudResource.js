@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 /**
  * Reusable hook for CRUD resource management.
@@ -25,6 +25,10 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // 11.3.2: Use ref to hold api — prevents callbacks from recreating when caller doesn't memoize
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
   const clearMessages = useCallback(() => {
     setError(null);
     setSuccess(null);
@@ -32,12 +36,14 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
 
   const load = useCallback(async () => {
     try {
-      const res = collectionKey !== null ? await api.getAll(collectionKey) : await api.getAll();
+      const res = collectionKey !== null
+        ? await apiRef.current.getAll(collectionKey)
+        : await apiRef.current.getAll();
       setItems(res.data);
     } catch (err) {
       console.error('[useCrudResource] Failed to load:', err);
     }
-  }, [api, collectionKey]);
+  }, [collectionKey]);
 
   useEffect(() => {
     load();
@@ -51,8 +57,8 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
       try {
         const res =
           collectionKey !== null
-            ? await api.create(collectionKey, data)
-            : await api.create(data);
+            ? await apiRef.current.create(collectionKey, data)
+            : await apiRef.current.create(data);
         setItems((prev) => [...prev, res.data]);
         return true;
       } catch (err) {
@@ -62,7 +68,7 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
         setLoading(false);
       }
     },
-    [api, collectionKey]
+    [collectionKey]
   );
 
   const handleUpdate = useCallback(
@@ -71,7 +77,7 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
       setSuccess(null);
       setLoading(true);
       try {
-        const res = await api.update(id, data);
+        const res = await apiRef.current.update(id, data);
         setItems((prev) => prev.map((item) => (item[deleteKey] === id ? res.data : item)));
         return true;
       } catch (err) {
@@ -81,7 +87,7 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
         setLoading(false);
       }
     },
-    [api, deleteKey]
+    [deleteKey]
   );
 
   const handleDelete = useCallback(
@@ -92,8 +98,8 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
       try {
         const res =
           collectionKey !== null
-            ? await api.delete(collectionKey, id)
-            : await api.delete(id);
+            ? await apiRef.current.delete(collectionKey, id)
+            : await apiRef.current.delete(id);
         if (res?.status === 204 || res?.status === 200) {
           setItems((prev) => prev.filter((item) => item[deleteKey] !== id));
         } else {
@@ -107,7 +113,7 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
         setLoading(false);
       }
     },
-    [api, collectionKey, deleteKey, load]
+    [collectionKey, deleteKey, load]
   );
 
   return {
