@@ -18,6 +18,7 @@ export default function JudgeDashboard() {
   const [unlockedCategory, setUnlockedCategory] = useState(null);
   const [categoryScores, setCategoryScores] = useState([]);
   const [loadingScores, setLoadingScores] = useState(false);
+  const [categoryScoreCounts, setCategoryScoreCounts] = useState({}); // { categoryId: { scored, total } }
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -70,6 +71,12 @@ export default function JudgeDashboard() {
     try {
       const res = await scoringAPI.getCategoryScores(session.judgeId, session.eventId, cat.id);
       setCategoryScores(res.data.scores || []);
+
+      // 10.2.6: Track score count for this category
+      setCategoryScoreCounts((prev) => ({
+        ...prev,
+        [cat.id]: { scored: (res.data.scores || []).length, total: cat.criteria?.length || 0 },
+      }));
     } catch (err) {
       console.error('Failed to load category scores:', err);
       setCategoryScores([]);
@@ -80,6 +87,18 @@ export default function JudgeDashboard() {
 
   const handleBackToCategories = () => {
     setSelectedCategory(null);
+    setCategoryScores([]);
+  };
+
+  const handleContestantsChange = async () => {
+    // Refetch scoring context to get updated contestants list
+    if (!session) return;
+    try {
+      const res = await scoringAPI.getContext(session.judgeId, session.eventId);
+      setScoringData(res.data);
+    } catch (err) {
+      console.error('Failed to refresh contestants:', err);
+    }
   };
 
   const handleSubmitCategory = async () => {
@@ -148,6 +167,7 @@ export default function JudgeDashboard() {
             serverScores={categoryScores}
             onBack={handleBackToCategories}
             onSubmit={handleSubmitCategory}
+            onContestantsChange={handleContestantsChange}
           />
         )}
       </div>
@@ -217,15 +237,16 @@ export default function JudgeDashboard() {
             const criteriaCount = cat.criteria?.length || 0;
             const isLocked = cat.is_locked;
             const isSubmitted = submittedCategories.has(cat.id);
+            const scored = categoryScoreCounts[cat.id]?.scored || 0;
 
             return (
               <button
                 key={cat.id}
-                onClick={() => !isLocked && !isSubmitted && handleSelectCategory(cat)}
-                disabled={isLocked || isSubmitted}
+                onClick={() => handleSelectCategory(cat)}
+                disabled={isLocked}
                 className={`text-left p-5 rounded-xl border-2 transition-all ${
                   isSubmitted
-                    ? 'border-green-200 bg-green-50 cursor-not-allowed'
+                    ? 'border-green-200 bg-green-50 cursor-pointer hover:shadow-md'
                     : isLocked
                     ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
                     : 'border-slate-200 hover:border-amber-400 hover:shadow-md bg-white'
@@ -234,13 +255,18 @@ export default function JudgeDashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-slate-900">{cat.name}</h3>
                   {isSubmitted ? (
-                    <span className="text-green-600 text-xs font-medium">✓ Submitted</span>
+                    <span className="text-green-600 text-xs font-medium">✓ Submitted (View)</span>
+                  ) : isLocked ? (
+                    <span className="text-slate-400 text-xs font-medium">🔒 Locked</span>
+                  ) : scored > 0 ? (
+                    <span className="text-amber-600 text-xs font-medium">Draft ({scored}/{criteriaCount})</span>
                   ) : (
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   )}
                 </div>
                 <div className="text-sm text-slate-500">
                   {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'}
+                  {isSubmitted && <span className="ml-2 text-green-600">· Submitted</span>}
                 </div>
                 {isLocked && (
                   <div className="mt-2 text-xs text-slate-400">

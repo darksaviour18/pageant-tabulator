@@ -10,6 +10,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import SubmitConfirmModal from './SubmitConfirmModal';
 import ConflictModal from './ConflictModal';
+import { useSocket } from '../context/SocketContext';
 
 export default function ScoreSheet({
   judgeId,
@@ -19,7 +20,9 @@ export default function ScoreSheet({
   serverScores = [],
   onBack,
   onSubmit,
+  onContestantsChange,
 }) {
+  const { onEvent } = useSocket();
   const [focusedCell, setFocusedCell] = useState({ row: 0, col: 0 });
   const [syncing, setSyncing] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -144,6 +147,14 @@ export default function ScoreSheet({
       })
     );
   }, [contestants, criteria, getScore]);
+
+  // 10.3.8: Listen for contestant_added event — notify parent to refetch
+  useEffect(() => {
+    const unsub = onEvent('contestant_added', () => {
+      onContestantsChange?.();
+    });
+    return unsub;
+  }, [onEvent, onContestantsChange]);
 
   if (dbLoading) {
     return (
