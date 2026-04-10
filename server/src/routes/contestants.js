@@ -14,6 +14,12 @@ function getIo(req) {
  */
 router.post('/', async (req, res, next) => {
   const { eventId } = req.params;
+
+  // 11.1.3: Guard against dead endpoint /api/contestants (no eventId)
+  if (!eventId) {
+    return res.status(400).json({ error: 'eventId path parameter is required — use POST /api/events/:eventId/contestants' });
+  }
+
   const { number, name } = req.body;
 
   if (number === undefined || number === null || !name) {

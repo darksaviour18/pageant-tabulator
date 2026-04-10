@@ -11,24 +11,32 @@ const DATA_DIR = process.env.DB_DIR || path.join(__dirname, '..', '..', 'data');
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'pageant.db');
 
 /**
+ * Singleton database instance.
+ */
+let dbInstance = null;
+
+/**
  * Initialize and return a Better-SQLite3 database connection with WAL mode enabled.
  * Creates all tables and indexes per the SPEC.md schema if they don't exist.
+ * Returns the existing singleton if already initialized.
  */
 export function initDatabase() {
+  if (dbInstance) return dbInstance;
+
   // Ensure data directory exists
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 
-  const db = new Database(DB_PATH);
+  dbInstance = new Database(DB_PATH);
 
   // Enable WAL mode for better concurrent read/write performance
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  db.pragma('synchronous = NORMAL');
+  dbInstance.pragma('journal_mode = WAL');
+  dbInstance.pragma('foreign_keys = ON');
+  dbInstance.pragma('synchronous = NORMAL');
 
   // Create tables
-  db.exec(`
+  dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -119,7 +127,7 @@ export function initDatabase() {
   `);
 
   // Create indexes
-  db.exec(`
+  dbInstance.exec(`
     CREATE INDEX IF NOT EXISTS idx_scores_judge ON scores(judge_id);
     CREATE INDEX IF NOT EXISTS idx_scores_contestant ON scores(contestant_id);
     CREATE INDEX IF NOT EXISTS idx_scores_category ON scores(category_id);
@@ -127,21 +135,19 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_audit_log_event ON audit_log(event_id, timestamp);
   `);
 
-  return db;
-}
-
-/**
- * Export a default-initialized database instance for use across modules.
- */
-let dbInstance = null;
-
-export function getDb() {
-  if (!dbInstance) {
-    dbInstance = initDatabase();
-  }
   return dbInstance;
 }
 
+/**
+ * Get the singleton database instance.
+ */
+export function getDb() {
+  return initDatabase();
+}
+
+/**
+ * Close the database connection.
+ */
 export function closeDb() {
   if (dbInstance) {
     dbInstance.close();
