@@ -8,6 +8,7 @@ import {
   Lock,
   Unlock,
   AlertCircle,
+  X,
 } from 'lucide-react';
 
 export default function AdminMonitor() {
@@ -20,6 +21,10 @@ export default function AdminMonitor() {
   const [unlocking, setUnlocking] = useState(null); // "judgeId:categoryId" while unlocking
   const [unlockMsg, setUnlockMsg] = useState(null);
   const [lockStatus, setLockStatus] = useState({}); // { categoryId: isLocked }
+
+  // 11.6.1: Live score preview state
+  const [previewJudge, setPreviewJudge] = useState(null); // { judge, category, scores }
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -154,6 +159,26 @@ export default function AdminMonitor() {
     }
   }, [lockStatus]);
 
+  // 11.6.1: Fetch judge's scores for a category and show preview
+  const handleViewJudgeScores = useCallback(async (judge, cat) => {
+    setPreviewJudge({ judge, category: cat, scores: [], loading: true });
+    setPreviewLoading(true);
+    try {
+      const res = await axios.get(`/api/scoring/${judge.id}/event/${event.id}/category/${cat.id}`);
+      setPreviewJudge((prev) => ({
+        ...prev,
+        scores: res.data.scores || [],
+        submitted: res.data.submitted || false,
+        unlockedByAdmin: res.data.unlockedByAdmin || false,
+      }));
+    } catch (err) {
+      console.error('Failed to load judge scores:', err);
+      setPreviewJudge((prev) => ({ ...prev, scores: [] }));
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [event]);
+
   const timeSinceSync = useMemo(() => {
     if (!lastSync) return null;
     const diff = Math.floor((Date.now() - lastSync) / 1000);
@@ -255,6 +280,17 @@ export default function AdminMonitor() {
                         <span className="text-sm font-medium text-slate-700">{cat.name}</span>
                         <div className="flex items-center gap-1.5">
                           <StatusBadge submitted={p.submitted} complete={isComplete} pct={pct} />
+                          {/* 11.6.1: View judge scores button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewJudgeScores(judge, cat);
+                            }}
+                            className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                            title="View judge's draft scores"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
                           {p.submitted && (
                             <button
                               onClick={() => handleUnlock(judge.id, judge.name, cat.id, cat.name)}
@@ -299,6 +335,99 @@ export default function AdminMonitor() {
           </p>
         </div>
       )}
+
+      {/* 11.6.1: Score Preview Modal */}
+      {previewJudge && (
+        <ScorePreviewModal
+          preview={previewJudge}
+          onClose={() => setPreviewJudge(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * 11.6.1: Score preview modal — shows a judge's draft scores for a category.
+ */
+function ScorePreviewModal({ preview, onClose }) {
+  if (!preview) return null;
+
+  const { judge, category, scores, submitted, unlockedByAdmin } = preview;
+
+  // Build a matrix: rows = criteria, columns = contestants with scores
+  const criteriaMap = {};
+  const contestantScores = {};
+  for (const s of scores) {
+    if (!contestantScores[s.contestant_id]) contestantScores[s.contestant_id] = {};
+    contestantScores[s.contestant_id][s.criteria_id] = s.score;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between bg-slate-50 px-6 py-4 border-b border-slate-200">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {judge.name} — {category.name}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {submitted ? (
+                <span className="text-green-600">✓ Submitted</span>
+              ) : (
+                <span className="text-amber-600">Draft — {scores.length} scores entered</span>
+              )}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scores Table */}
+        <div className="p-6">
+          {scores.length === 0 ? (
+            <p className="text-center text-slate-400 py-8">No scores entered yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 px-3 text-slate-500 font-medium">Contestant</th>
+                    {Object.keys(contestantScores).map((cid) => {
+                      const c = category.contestants?.find((ct) => ct.id === parseInt(cid));
+                      return (
+                        <th key={cid} className="text-center py-2 px-3 text-slate-500 font-medium">
+                          {c ? `#${c.number}` : `#${cid}`}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {category.criteria?.map((crit) => (
+                    <tr key={crit.id} className="border-b border-slate-100">
+                      <td className="py-2 px-3 text-slate-700 font-medium">{crit.name}</td>
+                      {Object.keys(contestantScores).map((cid) => (
+                        <td key={`${cid}-${crit.id}`} className="py-2 px-3 text-center">
+                          {contestantScores[cid]?.[crit.id] !== undefined ? (
+                            <span className="font-mono text-slate-900">
+                              {contestantScores[cid][crit.id]}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
