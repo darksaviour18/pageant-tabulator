@@ -8,13 +8,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide elements during print */
-.no-print {
-  display: none !important;
-}
-
 /* Print styles */
 @media print {
+  /* Hide elements during print */
+  .no-print {
+    display: none !important;
+  }
+
   /* Reset page layout */
   @page {
     size: letter portrait;
