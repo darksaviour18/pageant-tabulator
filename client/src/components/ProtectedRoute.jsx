@@ -16,8 +16,9 @@ export default function ProtectedRoute({ children }) {
       // Session exists — this is a judge's browser, not admin
       return <Navigate to="/judge/dashboard" state={{ from: location }} replace />;
     } catch {
-      // Invalid session data, clear it
+      // Invalid session data — was likely a judge's browser with corrupted state
       sessionStorage.removeItem('judge_session');
+      return <Navigate to="/judge/login" state={{ from: location }} replace />;
     }
   }
 

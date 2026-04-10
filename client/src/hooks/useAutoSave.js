@@ -56,12 +56,14 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
             entry.criteria_id
           );
         }
+        // Only clear the queue on success
+        queueRef.current.clear();
       }
     } catch (err) {
       console.warn('[useAutoSave] Batch sync failed, will retry on next change:', err);
+      // Queue is NOT cleared on failure — scores remain pending for next retry
     } finally {
       syncingRef.current = false;
-      queueRef.current.clear();
     }
   }, [judgeId, categoryId]);
 
