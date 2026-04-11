@@ -124,6 +124,40 @@ export function initDatabase() {
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
       FOREIGN KEY (judge_id) REFERENCES judges(id) ON DELETE SET NULL
     );
+
+    -- Enhanced Reports (v1.3)
+    CREATE TABLE IF NOT EXISTS saved_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER NOT NULL,
+      report_type TEXT NOT NULL CHECK(report_type IN ('category_detail', 'cross_category', 'top_n')),
+      report_title TEXT NOT NULL,
+      configuration TEXT NOT NULL, -- JSON: { category_ids, aggregation_type, signature_type, etc. }
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS elimination_rounds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER NOT NULL,
+      round_name TEXT NOT NULL,
+      round_order INTEGER NOT NULL,
+      contestant_count INTEGER NOT NULL,
+      based_on_report_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+      FOREIGN KEY (based_on_report_id) REFERENCES saved_reports(id) ON DELETE SET NULL,
+      UNIQUE(event_id, round_order)
+    );
+
+    CREATE TABLE IF NOT EXISTS round_qualifiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      round_id INTEGER NOT NULL,
+      contestant_id INTEGER NOT NULL,
+      qualified_rank INTEGER NOT NULL,
+      FOREIGN KEY (round_id) REFERENCES elimination_rounds(id) ON DELETE CASCADE,
+      FOREIGN KEY (contestant_id) REFERENCES contestants(id) ON DELETE CASCADE,
+      UNIQUE(round_id, contestant_id)
+    );
   `);
 
   // Create indexes
