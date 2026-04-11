@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { eventsAPI, categoriesAPI } from '../api';
-import { reportsAPI } from '../api';
+import { reportsAPI, eliminationRoundsAPI } from '../api';
 import { Crown, Printer, Loader2, Calendar, Users, Award } from 'lucide-react';
+import EliminationRoundManager from '../components/EliminationRoundManager';
 
 const REPORT_TYPES = [
   { id: 'category_detail', label: 'Category Detail (Per-Category Scores)' },
@@ -16,6 +17,8 @@ export default function PrintReport() {
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+  const [selectedRoundId, setSelectedRoundId] = useState('');
+  const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -28,15 +31,21 @@ export default function PrintReport() {
     setEventId(id);
     setSelectedCategoryId('');
     setSelectedCategoryIds([]);
+    setSelectedRoundId('');
+    setRounds([]);
     setReport(null);
     setError(null);
 
     if (id) {
       try {
-        const res = await categoriesAPI.getAll(parseInt(id, 10));
-        setCategories(res.data || []);
+        const [catsRes, roundsRes] = await Promise.all([
+          categoriesAPI.getAll(parseInt(id, 10)),
+          eliminationRoundsAPI.getAll(parseInt(id, 10)),
+        ]);
+        setCategories(catsRes.data || []);
+        setRounds(roundsRes.data || []);
       } catch (err) {
-        console.error('Failed to load categories:', err);
+        console.error('Failed to load data:', err);
       }
     }
   };
@@ -76,6 +85,16 @@ export default function PrintReport() {
       setError(err.response?.data?.error || 'Failed to generate report');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRoundCreated = async () => {
+    if (!eventId) return;
+    try {
+      const res = await eliminationRoundsAPI.getAll(parseInt(eventId, 10));
+      setRounds(res.data || []);
+    } catch (err) {
+      console.error('Failed to refresh rounds:', err);
     }
   };
 
@@ -168,6 +187,22 @@ export default function PrintReport() {
             </div>
           )}
 
+          {rounds.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Filter by Round</label>
+              <select
+                value={selectedRoundId}
+                onChange={(e) => setSelectedRoundId(e.target.value)}
+                className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[200px]"
+              >
+                <option value="">All contestants</option>
+                {rounds.map((r) => (
+                  <option key={r.id} value={r.id}>{r.round_name} ({r.contestant_count})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <button
             onClick={handleGenerate}
             disabled={loading || !eventId || (reportType === 'category_detail' && !selectedCategoryId) || (reportType === 'cross_category' && selectedCategoryIds.length === 0)}
@@ -202,6 +237,15 @@ export default function PrintReport() {
             <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} />
           )}
         </div>
+      )}
+
+      {/* Elimination Rounds — shown after cross-category report */}
+      {reportType === 'cross_category' && report && eventId && (
+        <EliminationRoundManager
+          eventId={parseInt(eventId, 10)}
+          reportData={report}
+          onRoundCreated={handleRoundCreated}
+        />
       )}
     </div>
   );

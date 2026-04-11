@@ -16,6 +16,7 @@ import scoresRouter from './routes/scores.js';
 import submissionsRouter from './routes/submissions.js';
 import reportsRouter from './routes/reports.js';
 import adminAuthRouter from './routes/adminAuth.js';
+import eliminationRoundsRouter from './routes/eliminationRounds.js';
 import { setupSocketHandlers } from './socket.js';
 
 // 11.1.4: Rate limiter for judge auth (5 attempts per 30s per event+seat)
@@ -104,6 +105,7 @@ app.use('/api/scores', scoresRouter);
 app.use('/api/submissions', submissionsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/auth/admin', adminAuthRouter);
+app.use('/api/elimination-rounds', eliminationRoundsRouter);
 
 // --- Judge Auth Route (direct mount to avoid Express 5 Router issue) ---
 app.post('/api/auth/judge', async (req, res, next) => {

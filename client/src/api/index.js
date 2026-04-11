@@ -77,3 +77,11 @@ export const reportsAPI = {
   saveReport: (data) => api.post('/reports/save', data),
   getSavedReports: (eventId) => api.get(`/reports/saved?event_id=${eventId}`),
 };
+
+// --- Elimination Rounds ---
+export const eliminationRoundsAPI = {
+  create: (data) => api.post('/elimination-rounds', data),
+  getAll: (eventId) => api.get(`/elimination-rounds?event_id=${eventId}`),
+  getQualifiers: (roundId) => api.get(`/elimination-rounds/${roundId}/qualifiers`),
+  delete: (roundId) => api.delete(`/elimination-rounds/${roundId}`),
+};
