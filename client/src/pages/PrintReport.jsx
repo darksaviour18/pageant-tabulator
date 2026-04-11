@@ -19,6 +19,8 @@ export default function PrintReport() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
   const [selectedRoundId, setSelectedRoundId] = useState('');
   const [rounds, setRounds] = useState([]);
+  const [reportTitle, setReportTitle] = useState('');
+  const [signatureType, setSignatureType] = useState('judges'); // 'judges' | 'tabulators'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -53,6 +55,7 @@ export default function PrintReport() {
   const handleReportTypeChange = (e) => {
     setReportType(e.target.value);
     setReport(null);
+    setReportTitle('');
     setError(null);
   };
 
@@ -203,6 +206,31 @@ export default function PrintReport() {
             </div>
           )}
 
+          {/* Report Title */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Report Title (optional)</label>
+            <input
+              type="text"
+              value={reportTitle}
+              onChange={(e) => setReportTitle(e.target.value)}
+              placeholder="Default title will be used"
+              className="px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none min-w-[250px]"
+            />
+          </div>
+
+          {/* Signature Type */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Signatures</label>
+            <select
+              value={signatureType}
+              onChange={(e) => setSignatureType(e.target.value)}
+              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[180px]"
+            >
+              <option value="judges">Judges' Signatures</option>
+              <option value="tabulators">Tabulators</option>
+            </select>
+          </div>
+
           <button
             onClick={handleGenerate}
             disabled={loading || !eventId || (reportType === 'category_detail' && !selectedCategoryId) || (reportType === 'cross_category' && selectedCategoryIds.length === 0)}
@@ -232,9 +260,9 @@ export default function PrintReport() {
       {report && (
         <div id="print-report" className="print-report bg-white rounded-xl shadow-sm border border-slate-200 p-8">
           {reportType === 'category_detail' ? (
-            <CategoryDetailReport report={report} event={events.find((e) => e.id === parseInt(eventId))} />
+            <CategoryDetailReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
           ) : (
-            <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} />
+            <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
           )}
         </div>
       )}
@@ -254,12 +282,12 @@ export default function PrintReport() {
 /**
  * Category Detail Report (existing per-category report)
  */
-function CategoryDetailReport({ report, event }) {
+function CategoryDetailReport({ report, event, signatureType, customTitle }) {
   return (
     <>
       <div className="text-center mb-8 border-b-2 border-slate-900 pb-6">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">PAGEANT TABULATOR PRO</h1>
-        <h2 className="text-xl font-semibold text-slate-700 mt-2">OFFICIAL SCORE SHEET — {report.category.name.toUpperCase()}</h2>
+        <h2 className="text-xl font-semibold text-slate-700 mt-2">{customTitle || `OFFICIAL SCORE SHEET — ${report.category.name.toUpperCase()}`}</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
@@ -353,11 +381,27 @@ function CategoryDetailReport({ report, event }) {
       </div>
 
       <div className="mt-16 pt-8 border-t border-slate-300">
-        <div className="grid grid-cols-3 gap-8">
-          <div><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">Head Judge</p></div>
-          <div><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">Tabulator</p></div>
-          <div><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">Event Director</p></div>
-        </div>
+        {signatureType === 'judges' ? (
+          <div>
+            <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Judges' Signatures</h4>
+            <div className="grid grid-cols-3 gap-8">
+              {report.judges.map((j) => (
+                <div key={j.id}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{j.name} (Seat #{j.seat_number})</p></div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Tabulators</h4>
+            <div className="grid grid-cols-2 gap-8">
+              {(event?.tabulators ? JSON.parse(event.tabulators) : [])
+                .filter(t => t.name)
+                .map((t, i) => (
+                  <div key={i}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{t.name}</p></div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -366,12 +410,12 @@ function CategoryDetailReport({ report, event }) {
 /**
  * Cross-Category Consolidation Report
  */
-function CrossCategoryReport({ report, event }) {
+function CrossCategoryReport({ report, event, signatureType, customTitle }) {
   return (
     <>
       <div className="text-center mb-8 border-b-2 border-slate-900 pb-6">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">PAGEANT TABULATOR PRO</h1>
-        <h2 className="text-xl font-semibold text-slate-700 mt-2">{report.title}</h2>
+        <h2 className="text-xl font-semibold text-slate-700 mt-2">{customTitle || report.title}</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
@@ -432,11 +476,27 @@ function CrossCategoryReport({ report, event }) {
       </div>
 
       <div className="mt-16 pt-8 border-t border-slate-300">
-        <div className="grid grid-cols-3 gap-8">
-          <div><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">Head Judge</p></div>
-          <div><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">Tabulator</p></div>
-          <div><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">Event Director</p></div>
-        </div>
+        {signatureType === 'judges' ? (
+          <div>
+            <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Judges' Signatures</h4>
+            <div className="grid grid-cols-3 gap-8">
+              {report.categories && (
+                <div className="col-span-3 text-sm text-slate-500 italic">Judges sign above their respective category sheets</div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Tabulators</h4>
+            <div className="grid grid-cols-2 gap-8">
+              {(event?.tabulators ? JSON.parse(event.tabulators) : [])
+                .filter(t => t.name)
+                .map((t, i) => (
+                  <div key={i}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{t.name}</p></div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

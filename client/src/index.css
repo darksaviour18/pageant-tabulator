@@ -51,13 +51,14 @@ body {
   }
 
   /* Ensure text is black for readability */
-  .text-slate-900, .text-slate-700, .text-slate-600, .text-slate-500 {
+  .text-slate-900, .text-slate-700, .text-slate-600, .text-slate-500, .text-slate-400 {
     color: black !important;
   }
 
   /* Ensure table borders print properly */
   table {
     border-collapse: collapse !important;
+    page-break-inside: auto;
   }
 
   th, td {
@@ -69,9 +70,23 @@ body {
     page-break-inside: avoid;
   }
 
+  /* Repeat table headers on each page for multi-page reports */
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
   /* Prevent page breaks inside report sections */
-  .print-report > div {
+  #print-report > div {
     page-break-inside: avoid;
+  }
+
+  /* Signature section should stay on its own page if possible */
+  #print-report .mt-16 {
+    page-break-before: auto;
   }
 
   /* Ensure background colors print if enabled */

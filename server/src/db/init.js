@@ -41,7 +41,8 @@ export function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'archived'))
+      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'archived')),
+      tabulators TEXT -- JSON array of tabulator names: [{name: "REYMOND ABELLA"}]
     );
 
     CREATE TABLE IF NOT EXISTS judges (

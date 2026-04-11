@@ -59,7 +59,7 @@ router.get('/:id', (req, res, next) => {
  */
 router.patch('/:id', (req, res, next) => {
   const { id } = req.params;
-  const { name, status } = req.body;
+  const { name, status, tabulators } = req.body;
 
   try {
     const existing = eventsService.getById(parseInt(id, 10));
@@ -75,9 +75,14 @@ router.patch('/:id', (req, res, next) => {
       return res.status(400).json({ error: 'Status must be "active" or "archived"' });
     }
 
+    if (tabulators !== undefined && !Array.isArray(tabulators)) {
+      return res.status(400).json({ error: 'tabulators must be an array of {name: string}' });
+    }
+
     const updated = eventsService.update(parseInt(id, 10), {
       name: name?.trim(),
       status,
+      tabulators: tabulators ? JSON.stringify(tabulators) : undefined,
     });
     return res.json(updated);
   } catch (err) {

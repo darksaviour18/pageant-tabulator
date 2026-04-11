@@ -83,10 +83,10 @@ export const eventsService = {
   /**
    * Update event fields.
    * @param {number} id
-   * @param {{ name?: string, status?: string }} data
+   * @param {{ name?: string, status?: string, tabulators?: string }} data
    * @returns {object}
    */
-  update(id, { name, status }) {
+  update(id, { name, status, tabulators }) {
     const db = getDb();
     const updates = [];
     const values = [];
@@ -98,6 +98,10 @@ export const eventsService = {
     if (status !== undefined) {
       updates.push('status = ?');
       values.push(status);
+    }
+    if (tabulators !== undefined) {
+      updates.push('tabulators = ?');
+      values.push(tabulators);
     }
 
     if (updates.length === 0) {

@@ -8,6 +8,7 @@ export default function EventSetup() {
   const [eventName, setEventName] = useState('');
   const [eventId, setEventId] = useState(null);
   const [status, setStatus] = useState('active');
+  const [tabulators, setTabulators] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -25,6 +26,7 @@ export default function EventSetup() {
         setEventId(activeEvent.id);
         setEventName(activeEvent.name);
         setStatus(activeEvent.status);
+        setTabulators(activeEvent.tabulators ? JSON.parse(activeEvent.tabulators).map(t => t.name).join('\n') : '');
         setIsEditing(true);
       }
     } catch (err) {
@@ -45,8 +47,14 @@ export default function EventSetup() {
     }
 
     try {
+      const tabulatorList = tabulators
+        .split('\n')
+        .map(t => t.trim())
+        .filter(Boolean)
+        .map(name => ({ name }));
+
       if (isEditing && eventId) {
-        const res = await eventsAPI.update(eventId, { name: eventName, status });
+        const res = await eventsAPI.update(eventId, { name: eventName, status, tabulators: tabulatorList });
         setEventId(res.data.id);
         setEventName(res.data.name);
         setStatus(res.data.status);
@@ -56,6 +64,10 @@ export default function EventSetup() {
         setEventId(res.data.id);
         setStatus(res.data.status);
         setIsEditing(true);
+        // Save tabulators after creation
+        if (tabulatorList.length > 0) {
+          await eventsAPI.update(res.data.id, { tabulators: tabulatorList });
+        }
         setSuccess('Event created successfully');
       }
     } catch (err) {
@@ -91,6 +103,21 @@ export default function EventSetup() {
               className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
             />
           </div>
+          {isEditing && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Tabulator Names (one per line)
+              </label>
+              <textarea
+                value={tabulators}
+                onChange={(e) => setTabulators(e.target.value)}
+                placeholder="REYMOND ABELLA&#10;RHAIAN DELA TORRE"
+                rows={3}
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-none transition"
+              />
+              <p className="text-xs text-slate-400 mt-1">These names appear on report footprints when "Tabulators" signature type is selected.</p>
+            </div>
+          )}
           {isEditing && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">

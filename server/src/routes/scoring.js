@@ -22,12 +22,30 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
       return res.status(404).json({ error: 'Judge not found for this event' });
     }
 
-    // Get all active contestants
-    const contestants = db
-      .prepare(
-        'SELECT id, number, name FROM contestants WHERE event_id = ? AND status = ? ORDER BY number'
-      )
-      .all(eventId, 'active');
+    // 12.3.1: Filter contestants by active elimination round if specified
+    const { round_id } = req.query;
+    let contestants;
+    if (round_id) {
+      const round = db.prepare('SELECT id FROM elimination_rounds WHERE id = ? AND event_id = ?').get(round_id, eventId);
+      if (round) {
+        contestants = db
+          .prepare(
+            `SELECT c.id, c.number, c.name FROM contestants c
+             INNER JOIN round_qualifiers rq ON rq.contestant_id = c.id
+             WHERE rq.round_id = ? AND c.event_id = ? AND c.status = ?
+             ORDER BY c.number`
+          )
+          .all(round_id, eventId, 'active');
+      } else {
+        contestants = [];
+      }
+    } else {
+      contestants = db
+        .prepare(
+          'SELECT id, number, name FROM contestants WHERE event_id = ? AND status = ? ORDER BY number'
+        )
+        .all(eventId, 'active');
+    }
 
     // Get all categories with their criteria
     const categories = db
