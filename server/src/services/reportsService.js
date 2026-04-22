@@ -1,10 +1,65 @@
 import { getDb } from '../db/init.js';
 
+const DEFAULT_CACHE_TTL_MS = parseInt(process.env.REPORT_CACHE_TTL_MS, 10) || 5 * 60 * 1000; // 5 minutes
+
+const reportCache = new Map();
+
+function getCacheKey(type, eventId, params) {
+  if (type === 'category') {
+    return `category:${eventId}:${params.categoryId}`;
+  }
+  return `cross:${eventId}:${params.categoryIds.sort().join(',')}`;
+}
+
+function getFromCache(key) {
+  const entry = reportCache.get(key);
+  if (!entry) return null;
+
+  if (Date.now() - entry.timestamp > entry.ttl) {
+    reportCache.delete(key);
+    return null;
+  }
+
+  return entry.data;
+}
+
+function setToCache(key, data, ttl = DEFAULT_CACHE_TTL_MS) {
+  reportCache.set(key, {
+    data,
+    timestamp: Date.now(),
+    ttl,
+  });
+}
+
+export function invalidateReportCache(eventId, categoryId = null) {
+  const keysToDelete = [];
+  for (const key of reportCache.keys()) {
+    if (key.startsWith(`category:${eventId}:`)) {
+      if (categoryId === null || key === `category:${eventId}:${categoryId}`) {
+        keysToDelete.push(key);
+      }
+    }
+    if (key.startsWith(`cross:${eventId}:`)) {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach((key) => reportCache.delete(key));
+}
+
 export const reportsService = {
+  DEFAULT_CACHE_TTL_MS,
+
   /**
    * Generate a full report for a specific category.
+   * Uses caching to avoid re-computing on each refresh.
    */
   generateCategoryReport(eventId, categoryId) {
+    const cacheKey = getCacheKey('category', eventId, { categoryId });
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      return { ...cached, _cached: true };
+    }
+
     const db = getDb();
 
     const category = db
@@ -33,7 +88,7 @@ export const reportsService = {
 
     const rankings = this._calculateRankings(contestants, criteria, scores);
 
-    return {
+    const report = {
       category: { id: category.id, name: category.name, display_order: category.display_order, is_locked: !!category.is_locked },
       criteria,
       judges,
@@ -41,17 +96,28 @@ export const reportsService = {
       scores,
       rankings,
     };
+
+    setToCache(cacheKey, report);
+
+    return report;
   },
 
   /**
    * Generate a cross-category consolidation report.
    * Aggregates ranks across multiple categories using rank-sum logic.
+   * Uses caching to avoid re-computing on each refresh.
    *
    * @param {number} eventId
    * @param {{ categoryIds: number[], aggregation_type?: 'rank_sum' | 'score_sum', report_title?: string }} config
    * @returns {object|null}
    */
   generateCrossCategoryReport(eventId, { categoryIds, aggregation_type = 'rank_sum', report_title }) {
+    const cacheKey = getCacheKey('cross', eventId, { categoryIds });
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      return { ...cached, _cached: true };
+    }
+
     const db = getDb();
 
     if (!categoryIds || categoryIds.length === 0) return null;
@@ -163,11 +229,15 @@ export const reportsService = {
       ranked[i].overall_rank = currentRank;
     }
 
-    return {
+    const report = {
       title: report_title || 'Cross-Category Consolidation Report',
       categories: categories.map(c => ({ id: c.id, name: c.name, display_order: c.display_order })),
       contestants: ranked,
     };
+
+    setToCache(cacheKey, report);
+
+    return report;
   },
 
   /**

@@ -76,6 +76,7 @@ export const reportsAPI = {
   getCrossCategoryReport: (eventId, data) => api.post(`/reports/${eventId}/cross-category`, data),
   saveReport: (data) => api.post('/reports/save', data),
   getSavedReports: (eventId) => api.get(`/reports/saved?event_id=${eventId}`),
+  deleteSavedReport: (id) => api.delete(`/reports/saved/${id}`),
 };
 
 // --- Elimination Rounds ---

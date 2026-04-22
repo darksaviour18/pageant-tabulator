@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { reportsService } from '../services/reportsService.js';
+import { reportsService, invalidateReportCache } from '../services/reportsService.js';
 import { getDb } from '../db/init.js';
+import { writeAuditLog } from '../services/auditService.js';
 
 const router = Router({ mergeParams: true });
 
@@ -20,6 +21,13 @@ router.get('/:eventId/category/:categoryId', (req, res, next) => {
     if (!report) {
       return res.status(404).json({ error: 'Category not found for this event' });
     }
+
+    writeAuditLog(
+      parseInt(eventId, 10),
+      null,
+      'report_generated',
+      { report_type: 'category_detail', category_id: parseInt(categoryId, 10), cached: !!report._cached }
+    );
 
     return res.json(report);
   } catch (err) {
@@ -50,6 +58,13 @@ router.post('/:eventId/cross-category', (req, res, next) => {
       return res.status(404).json({ error: 'One or more categories not found for this event' });
     }
 
+    writeAuditLog(
+      parseInt(eventId, 10),
+      null,
+      'report_generated',
+      { report_type: 'cross_category', category_ids, aggregation_type, report_title, cached: !!report._cached }
+    );
+
     return res.json(report);
   } catch (err) {
     next(err);
@@ -79,7 +94,44 @@ router.post('/save', (req, res, next) => {
       .prepare('SELECT * FROM saved_reports WHERE id = ?')
       .get(result.lastInsertRowid);
 
+    writeAuditLog(
+      parseInt(event_id, 10),
+      null,
+      'report_saved',
+      { report_type, report_title, configuration, saved_report_id: saved.id }
+    );
+
     return res.status(201).json(saved);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /api/reports/saved/:id
+ * Delete a saved report configuration.
+ */
+router.delete('/saved/:id', (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const db = getDb();
+    const saved = db.prepare('SELECT * FROM saved_reports WHERE id = ?').get(parseInt(id, 10));
+
+    if (!saved) {
+      return res.status(404).json({ error: 'Saved report not found' });
+    }
+
+    db.prepare('DELETE FROM saved_reports WHERE id = ?').run(parseInt(id, 10));
+
+    writeAuditLog(
+      saved.event_id,
+      null,
+      'report_deleted',
+      { report_type: saved.report_type, report_title: saved.report_title, saved_report_id: saved.id }
+    );
+
+    return res.status(204).send();
   } catch (err) {
     next(err);
   }

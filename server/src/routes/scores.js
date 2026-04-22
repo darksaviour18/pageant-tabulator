@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db/init.js';
 import { writeAuditLog } from '../services/auditService.js';
+import { invalidateReportCache } from '../services/reportsService.js';
 
 const router = Router();
 
@@ -166,6 +167,11 @@ router.post('/', (req, res, next) => {
       });
     }
 
+    // Invalidate report cache for this category
+    if (eventRow && saved.category_id) {
+      invalidateReportCache(eventRow.event_id, saved.category_id);
+    }
+
     return res.status(201).json(saved);
   } catch (err) {
     next(err);
@@ -231,6 +237,8 @@ router.post('/batch', (req, res, next) => {
 
       let saved = 0;
       const errors = [];
+      const affectedCategories = new Set();
+      const eventIds = new Set();
 
       for (let i = 0; i < entries.length; i++) {
         const s = entries[i];
@@ -248,17 +256,28 @@ router.post('/batch', (req, res, next) => {
 
         try {
           const result = stmt.run(s.judge_id, s.judge_id, s.contestant_id, s.criteria_id, s.category_id, s.score);
-          if (result.changes > 0) saved++;
+          if (result.changes > 0) {
+            saved++;
+            affectedCategories.add(s.category_id);
+            const judgeEvent = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(s.judge_id);
+            if (judgeEvent) eventIds.add(judgeEvent.event_id);
+          }
         } catch (err) {
           errors.push({ index: i, error: err.message });
         }
       }
 
-      return { saved, errors };
+      return { saved, errors, affectedCategories: [...affectedCategories], eventIds: [...eventIds] };
     });
 
     const result = dbTx(scores);
-    return res.json(result);
+
+    // Invalidate report cache for affected categories
+    for (const eventId of result.eventIds) {
+      invalidateReportCache(eventId);
+    }
+
+    return res.json({ saved: result.saved, errors: result.errors });
   } catch (err) {
     next(err);
   }

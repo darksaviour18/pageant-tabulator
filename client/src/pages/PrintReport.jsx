@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { eventsAPI, categoriesAPI } from '../api';
 import { reportsAPI, eliminationRoundsAPI } from '../api';
-import { Crown, Printer, Loader2, Calendar, Users, Award } from 'lucide-react';
+import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw } from 'lucide-react';
 import EliminationRoundManager from '../components/EliminationRoundManager';
 
 const REPORT_TYPES = [
@@ -24,9 +24,24 @@ export default function PrintReport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [savedReports, setSavedReports] = useState([]);
+
   useEffect(() => {
     eventsAPI.getAll().then((res) => setEvents(res.data || [])).catch(console.error);
   }, []);
+
+  // Load saved reports when event changes
+  useEffect(() => {
+    if (eventId) {
+      reportsAPI.getSavedReports(eventId)
+        .then((res) => setSavedReports(res.data || []))
+        .catch(console.error);
+    } else {
+      setSavedReports([]);
+    }
+  }, [eventId]);
 
   const handleEventChange = async (e) => {
     const id = e.target.value;
@@ -59,28 +74,38 @@ export default function PrintReport() {
     setError(null);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (configFromSaved = null) => {
     setError(null);
     setLoading(true);
 
+    // Use provided config or current state
+    const config = configFromSaved || {
+      reportType,
+      selectedCategoryId,
+      selectedCategoryIds,
+      reportTitle,
+    };
+
     try {
       let res;
-      if (reportType === 'category_detail') {
-        if (!eventId || !selectedCategoryId) {
+      if (config.reportType === 'category_detail') {
+        const catId = config.selectedCategoryId;
+        if (!eventId || !catId) {
           setError('Please select a category');
           setLoading(false);
           return;
         }
-        res = await reportsAPI.getReport(parseInt(eventId, 10), parseInt(selectedCategoryId, 10));
+        res = await reportsAPI.getReport(parseInt(eventId, 10), parseInt(catId, 10));
       } else {
-        if (!eventId || selectedCategoryIds.length === 0) {
+        const catIds = config.selectedCategoryIds;
+        if (!eventId || catIds.length === 0) {
           setError('Please select at least one category');
           setLoading(false);
           return;
         }
         res = await reportsAPI.getCrossCategoryReport(parseInt(eventId, 10), {
-          category_ids: selectedCategoryIds,
-          report_title: 'OVERALL PRELIMINARY SCORES',
+          category_ids: catIds,
+          report_title: config.reportTitle || 'OVERALL PRELIMINARY SCORES',
         });
       }
       setReport(res.data);
@@ -89,6 +114,62 @@ export default function PrintReport() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveReport = async () => {
+    if (!eventId || !report) return;
+
+    const config = {
+      reportType,
+      category_id: reportType === 'category_detail' ? parseInt(selectedCategoryId, 10) : null,
+      category_ids: reportType === 'cross_category' ? selectedCategoryIds : [],
+      reportTitle,
+      signatureType,
+    };
+
+    try {
+      await reportsAPI.saveReport({
+        event_id: parseInt(eventId, 10),
+        report_type: reportType,
+        report_title: reportTitle || (reportType === 'category_detail' ? `Category: ${report.category?.name}` : report.title || 'Cross-Category Report'),
+        configuration: config,
+      });
+
+      // Refresh saved reports
+      const res = await reportsAPI.getSavedReports(eventId);
+      setSavedReports(res.data || []);
+    } catch (err) {
+      console.error('Failed to save report:', err);
+    }
+  };
+
+  const handleLoadSavedReport = async (saved) => {
+    const config = JSON.parse(saved.configuration);
+
+    setReportType(config.reportType);
+    setSelectedCategoryId(config.category_id ? String(config.category_id) : '');
+    setSelectedCategoryIds(config.category_ids || []);
+    setReportTitle(config.reportTitle || '');
+    setSignatureType(config.signatureType || 'judges');
+
+    // Auto-generate
+    await handleGenerate(config);
+  };
+
+  const handleDeleteSavedReport = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await reportsAPI.deleteSavedReport(id);
+      setSavedReports((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error('Failed to delete saved report:', err);
+    }
+  };
+
+  const handleRegenerateReport = async (saved, e) => {
+    e.stopPropagation();
+    const config = JSON.parse(saved.configuration);
+    await handleGenerate(config);
   };
 
   const handleRoundCreated = async () => {
@@ -241,19 +322,80 @@ export default function PrintReport() {
           </button>
 
           {report && (
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg transition-colors"
-            >
-              <Printer className="w-4 h-4" />
-              Print
-            </button>
+            <>
+              <button
+                onClick={handleSaveReport}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                Save Report
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Print
+              </button>
+            </>
           )}
+
+          {/* Sidebar Toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors ${
+              sidebarOpen ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {sidebarOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {sidebarOpen ? 'Hide' : 'Show'} History
+          </button>
         </div>
 
         {error && (
           <div className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">{error}</div>
         )}
+      </div>
+
+      {/* Report History Sidebar */}
+      <div className={`no-print transition-all duration-300 ease-in-out ${sidebarOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Saved Reports</h3>
+          {savedReports.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">No saved reports yet. Generate and save a report to see it here.</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {savedReports.map((saved) => (
+                <div
+                  key={saved.id}
+                  onClick={() => handleLoadSavedReport(saved)}
+                  className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg hover:border-amber-300 hover:bg-amber-50 cursor-pointer transition-colors group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{saved.report_title}</p>
+                    <p className="text-xs text-slate-500">{saved.report_type === 'category_detail' ? 'Category Detail' : 'Cross-Category'} • {new Date(saved.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex items-center gap-1 ml-2">
+                    <button
+                      onClick={(e) => handleRegenerateReport(saved, e)}
+                      title="Regenerate"
+                      className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-100 rounded transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteSavedReport(saved.id, e)}
+                      title="Delete"
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Report Content */}
