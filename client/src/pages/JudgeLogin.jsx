@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI, eventsAPI, judgesAPI } from '../api';
 import { Crown, AlertCircle } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import Button from '../components/Button';
 
 const JUDGE_SESSION_KEY = 'judge_session';
 
 export default function JudgeLogin() {
   const navigate = useNavigate();
+  const { isDark } = useTheme();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState('');
   const [judges, setJudges] = useState([]);
@@ -57,7 +60,6 @@ export default function JudgeLogin() {
         pin,
       });
 
-      // Store session in sessionStorage
       sessionStorage.setItem(
         JUDGE_SESSION_KEY,
         JSON.stringify({
@@ -79,34 +81,34 @@ export default function JudgeLogin() {
 
   if (loadingEvents) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-slate-400 text-lg">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center">
+        <div className="text-zinc-400 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-500/10 mb-4">
-            <Crown className="w-8 h-8 text-amber-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-rose-400/20 to-pink-500/20 mb-4 ring-1 ring-rose-400/30">
+            <Crown className="w-10 h-10 text-rose-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white">
-            Pageant Tabulator <span className="text-amber-400">Pro</span>
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            Pageant Tabulator <span className="text-rose-400">Pro</span>
           </h1>
-          <p className="text-slate-400 mt-1">Judge Scoring Portal</p>
+          <p className="text-zinc-400 mt-2 text-sm">Judge Scoring Portal</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-6">Judge Login</h2>
+        <div className="bg-zinc-900/80 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 p-8 border border-zinc-800">
+          <h2 className="text-xl font-semibold text-zinc-100 mb-6">Judge Login</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Event Selection */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Select Event
               </label>
               <select
@@ -128,7 +130,9 @@ export default function JudgeLogin() {
                     setLoadingJudges(false);
                   }
                 }}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white"
+                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
+                  focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
+                  transition-all duration-200 touch-manipulation"
                 disabled={events.length === 0}
               >
                 <option value="">Choose an event...</option>
@@ -139,7 +143,7 @@ export default function JudgeLogin() {
                 ))}
               </select>
               {events.length === 0 && (
-                <p className="text-xs text-slate-400 mt-1.5">
+                <p className="text-xs text-zinc-500 mt-1.5">
                   No active events found. Contact your admin.
                 </p>
               )}
@@ -147,13 +151,15 @@ export default function JudgeLogin() {
 
             {/* Seat Number */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Seat Number
               </label>
               <select
                 value={seatNumber}
                 onChange={(e) => setSeatNumber(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white"
+                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
+                  focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
+                  transition-all duration-200 touch-manipulation disabled:opacity-50"
                 disabled={!eventId || judges.length === 0 || loadingJudges}
               >
                 <option value="">Select your seat...</option>
@@ -171,7 +177,7 @@ export default function JudgeLogin() {
 
             {/* PIN */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
                 Enter PIN
               </label>
               <input
@@ -180,27 +186,33 @@ export default function JudgeLogin() {
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 placeholder="••••"
                 maxLength={4}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-center text-2xl tracking-[0.5em] font-mono"
+                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg 
+                  text-center text-2xl tracking-[0.5em] font-mono text-zinc-100 placeholder-zinc-600
+                  focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
+                  transition-all duration-200 touch-manipulation disabled:opacity-50"
                 disabled={!seatNumber}
               />
             </div>
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 px-4 py-3 rounded-lg border border-red-500/20">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {/* Submit */}
-            <button
+            <Button
               type="submit"
-              disabled={loading || !eventId || !seatNumber || pin.length !== 4}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+              variant="primary"
+              size="lg"
+              loading={loading}
+              disabled={!eventId || !seatNumber || pin.length !== 4}
+              className="w-full"
             >
               {loading ? 'Signing in...' : 'Sign In'}
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -208,7 +220,7 @@ export default function JudgeLogin() {
         <div className="text-center mt-6">
           <a
             href="/"
-            className="text-sm text-slate-500 hover:text-amber-400 transition-colors"
+            className="text-sm text-zinc-500 hover:text-rose-400 transition-colors"
           >
             ← Back to Admin Dashboard
           </a>

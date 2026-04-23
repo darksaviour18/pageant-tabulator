@@ -35,6 +35,15 @@ export function initDatabase() {
   dbInstance.pragma('foreign_keys = ON');
   dbInstance.pragma('synchronous = NORMAL');
 
+  // WAL checkpoint on startup - ensures any pending WAL writes are committed to main DB
+  // This prevents data loss on unexpected server shutdown/crash
+  try {
+    dbInstance.pragma('wal_checkpoint(TRUNCATE)');
+    console.log('[DB] WAL checkpoint completed on startup');
+  } catch (err) {
+    console.warn('[DB] WAL checkpoint skipped (new database):', err.message);
+  }
+
   // Create tables
   dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS events (

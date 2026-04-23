@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import EventSetup from './EventSetup';
 import AdminMonitor from './AdminMonitor';
 import PrintReport from './PrintReport';
+import AnimatedTabs from '../components/AnimatedTabs';
 import { ClipboardList, BarChart3, Printer } from 'lucide-react';
+import { useHotkeys, HotkeyHint } from '../hooks/useHotkeys';
 
 const TABS = [
   { id: 'setup', label: 'Setup', icon: ClipboardList },
@@ -13,33 +15,40 @@ const TABS = [
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('setup');
 
+  const handlers = {
+    'j+mod': () => cycleTab(1),
+    'k+mod': () => cycleTab(-1),
+    's+mod': () => save(),
+  };
+
+  function cycleTab(direction) {
+    const currentIndex = TABS.findIndex(t => t.id === activeTab);
+    const nextIndex = (currentIndex + direction + TABS.length) % TABS.length;
+    setActiveTab(TABS[nextIndex].id);
+  }
+
+  function save() {
+    const saveButton = document.querySelector('[data-save-button]');
+    if (saveButton) saveButton.click();
+  }
+
+  useHotkeys(handlers);
+
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <nav className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit" role="tablist">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                isActive
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </nav>
+      <div className="flex items-center justify-between">
+        <AnimatedTabs 
+          tabs={TABS} 
+          activeTab={activeTab} 
+          onChange={setActiveTab}
+        />
+        <div className="hidden sm:flex items-center gap-2">
+          <HotkeyHint keys={['J']} label="Next" />
+          <HotkeyHint keys={['K']} label="Prev" />
+          <HotkeyHint keys={['Cmd', 'S']} label="Save" />
+        </div>
+      </div>
 
-      {/* Tab Content */}
       <div role="tabpanel">
         {activeTab === 'setup' && <EventSetup />}
         {activeTab === 'monitor' && <AdminMonitor />}

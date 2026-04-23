@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { getScoresByJudgeAndCategory, saveScore, isCategorySubmitted } from '../db';
 
 /**
@@ -6,18 +6,33 @@ import { getScoresByJudgeAndCategory, saveScore, isCategorySubmitted } from '../
  *
  * @param {number} judgeId
  * @param {number} categoryId
- * @param {{ serverScores?: Array, onSync?: (scores: Array) => void }} options
+ * @param {{ serverScores?: Array, onSync?: (scores: Array) => void, refetchKey?: number }} options
  */
 export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSync, refetchKey = 0 } = {}) {
   const [localScores, setLocalScores] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const abortRef = useRef(false); // 14.5: Abort flag for stale async loads
+
+  // 14.5: Reset abort flag when refetchKey changes
+  useEffect(() => {
+    abortRef.current = false;
+  }, [refetchKey]);
 
   useEffect(() => {
+    // 14.5: Set abort flag for this load
+    abortRef.current = false;
+
     const loadScores = async () => {
       setLoading(true);
       try {
+        // 14.5: Check abort flag before async operations
+        if (abortRef.current) return;
+
         const scores = await getScoresByJudgeAndCategory(judgeId, categoryId);
+
+        if (abortRef.current) return; // Check again after async
+
         setLocalScores(scores);
 
         const submitted = await isCategorySubmitted(judgeId, categoryId);
@@ -29,6 +44,11 @@ export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSyn
       }
     };
     loadScores();
+
+    // 14.5: Cleanup - set abort flag on unmount/re-render
+    return () => {
+      abortRef.current = true;
+    };
   }, [judgeId, categoryId, refetchKey]);
 
   /**

@@ -5,10 +5,12 @@ import { getJudgeSession, clearJudgeSession } from '../utils/session';
 import { scoringAPI, submissionsAPI } from '../api';
 import ScoreSheet from '../components/ScoreSheet';
 import { useSocket } from '../context/SocketContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function JudgeDashboard() {
   const navigate = useNavigate();
   const { onEvent, connected, lastSync } = useSocket();
+  const { isDark } = useTheme();
   const [session, setSession] = useState(null);
   const [scoringData, setScoringData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -116,7 +118,7 @@ export default function JudgeDashboard() {
   if (!session || loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-slate-500 text-lg">Loading...</div>
+        <div className="text-[var(--color-text-muted)] text-lg">Loading...</div>
       </div>
     );
   }
@@ -128,7 +130,7 @@ export default function JudgeDashboard() {
       <div className="space-y-4">
         {/* Offline banner */}
         {!connected && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
             <WifiOff className="w-4 h-4" />
             Working offline. Scores saved locally.
           </div>
@@ -137,17 +139,17 @@ export default function JudgeDashboard() {
         {/* Compact header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-slate-900">
+            <h1 className="text-lg font-bold text-[var(--color-text)]">
               {session.judgeName} — {session.eventName}
             </h1>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400" title={`Last sync: ${timeSinceSync}`}>
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" title={`Last sync: ${timeSinceSync}`}>
               {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
               <span>{connected ? 'Connected' : 'Disconnected'}</span>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
             Sign Out
@@ -156,7 +158,7 @@ export default function JudgeDashboard() {
 
         {loadingScores ? (
           <div className="flex items-center justify-center py-20">
-            <div className="text-slate-500 text-lg">Loading scores...</div>
+            <div className="text-[var(--color-text-muted)] text-lg">Loading scores...</div>
           </div>
         ) : (
           <ScoreSheet
@@ -181,13 +183,13 @@ export default function JudgeDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-[var(--color-text)]">
             Welcome, {session.judgeName}
           </h1>
-          <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mt-1">
             <Calendar className="w-4 h-4" />
             <span>{session.eventName}</span>
-            <span className="text-slate-300">·</span>
+            <span className="text-[var(--color-text-muted)]/30">·</span>
             <span className="flex items-center gap-1.5" title={`Last sync: ${timeSinceSync}`}>
               {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
               {connected ? 'Connected' : 'Disconnected'}
@@ -196,7 +198,7 @@ export default function JudgeDashboard() {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Sign Out
@@ -205,14 +207,14 @@ export default function JudgeDashboard() {
 
       {/* Offline banner */}
       {!connected && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
           <WifiOff className="w-4 h-4" />
           Working offline. Scores saved locally.
         </div>
       )}
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+        <div className="flex items-center gap-2 text-sm text-red-500 bg-red-500/10 px-4 py-3 rounded-lg">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
@@ -220,7 +222,7 @@ export default function JudgeDashboard() {
 
       {/* Unlock Notification Banner */}
       {unlockedCategory && scoringData && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2 animate-pulse">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-3 rounded-lg flex items-center gap-2 animate-pulse">
           <AlertCircle className="w-4 h-4" />
           <span className="font-medium">
             Admin has unlocked{' '}
@@ -232,7 +234,7 @@ export default function JudgeDashboard() {
 
       {/* Category Cards */}
       {scoringData?.categories?.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scoringData.categories.map((cat) => {
             const criteriaCount = cat.criteria?.length || 0;
             const isLocked = cat.is_locked;
@@ -244,32 +246,33 @@ export default function JudgeDashboard() {
                 key={cat.id}
                 onClick={() => handleSelectCategory(cat)}
                 disabled={isLocked}
-                className={`text-left p-5 rounded-xl border-2 transition-all ${
+                aria-label={`${cat.name}: ${isSubmitted ? 'Submitted' : isLocked ? 'Locked' : scored > 0 ? `Draft ${scored}/${criteriaCount}` : 'Not started'}`}
+                className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation ${
                   isSubmitted
-                    ? 'border-green-200 bg-green-50 cursor-pointer hover:shadow-md'
+                    ? 'border-green-500/30 bg-green-500/10 cursor-pointer hover:shadow-md active:scale-[0.98]'
                     : isLocked
-                    ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
-                    : 'border-slate-200 hover:border-amber-400 hover:shadow-md bg-white'
+                    ? 'border-[var(--color-border)] bg-[var(--color-bg-subtle)] cursor-not-allowed opacity-60'
+                    : 'border-[var(--color-border)] hover:border-[var(--color-cta)] hover:shadow-md bg-[var(--color-bg-subtle)] active:scale-[0.98]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-slate-900">{cat.name}</h3>
+                  <h3 className="font-semibold text-[var(--color-text)]">{cat.name}</h3>
                   {isSubmitted ? (
-                    <span className="text-green-600 text-xs font-medium">✓ Submitted (View)</span>
+                    <span className="text-green-500 text-xs font-medium">✓ Submitted (View)</span>
                   ) : isLocked ? (
-                    <span className="text-slate-400 text-xs font-medium">🔒 Locked</span>
+                    <span className="text-[var(--color-text-muted)] text-xs font-medium">🔒 Locked</span>
                   ) : scored > 0 ? (
-                    <span className="text-amber-600 text-xs font-medium">Draft ({scored}/{criteriaCount})</span>
+                    <span className="text-[var(--color-cta)] text-xs font-medium">Draft ({scored}/{criteriaCount})</span>
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
                   )}
                 </div>
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-[var(--color-text-muted)]">
                   {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'}
-                  {isSubmitted && <span className="ml-2 text-green-600">· Submitted</span>}
+                  {isSubmitted && <span className="ml-2 text-green-500">· Submitted</span>}
                 </div>
                 {isLocked && (
-                  <div className="mt-2 text-xs text-slate-400">
+                  <div className="mt-2 text-xs text-[var(--color-text-muted)]">
                     Locked by Admin
                   </div>
                 )}
@@ -278,11 +281,11 @@ export default function JudgeDashboard() {
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
-          <p className="text-slate-400 text-lg">
+        <div className="bg-[var(--color-bg-subtle)] rounded-xl shadow-sm border border-[var(--color-border)] p-8 text-center">
+          <p className="text-[var(--color-text-muted)] text-lg">
             No scoring categories available yet.
           </p>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-[var(--color-text-muted)] text-sm mt-1">
             The admin hasn't configured categories for this event.
           </p>
         </div>

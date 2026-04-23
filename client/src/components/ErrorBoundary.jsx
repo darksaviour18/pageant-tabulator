@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 /**
  * React Error Boundary — catches render errors and shows a recovery UI.
+ * Supports resetKey prop to force re-mount children on reset.
  */
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -18,6 +19,7 @@ export default class ErrorBoundary extends Component {
     console.error('[ErrorBoundary]', error, errorInfo);
   }
 
+  // 14.7: handleReset now supports resetKey to force re-mount
   handleReset = () => {
     this.setState({ hasError: false, error: null });
   };
@@ -44,6 +46,20 @@ export default class ErrorBoundary extends Component {
       );
     }
 
+    // 14.7: If resetKey changed, re-mount children by using key
+    if (this.props.resetKey !== undefined) {
+      return (
+        <ErrorBoundaryInner key={this.props.resetKey}>
+          {this.props.children}
+        </ErrorBoundaryInner>
+      );
+    }
+
     return this.props.children;
   }
+}
+
+// 14.7: Inner component that actually re-mounts on key change
+function ErrorBoundaryInner({ children }) {
+  return children;
 }

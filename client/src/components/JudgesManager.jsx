@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { judgesAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function JudgesManager({ eventId }) {
+  const { isDark } = useTheme();
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
 
@@ -37,9 +39,9 @@ export default function JudgesManager({ eventId }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-[var(--color-bg-subtle)] rounded-xl shadow-sm border border-[var(--color-border)] p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Judges</h2>
+        <h2 className="text-xl font-semibold text-[var(--color-text)]">Judges</h2>
       </div>
 
       {/* Add Judge Form */}
@@ -49,7 +51,7 @@ export default function JudgesManager({ eventId }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Judge name"
-          className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+          className="flex-1 px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
         />
         <input
           type="password"
@@ -57,12 +59,12 @@ export default function JudgesManager({ eventId }) {
           onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
           placeholder="4-digit PIN"
           maxLength={4}
-          className="w-32 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-center tracking-widest"
+          className="w-32 px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-center tracking-widest bg-[var(--color-bg)] text-[var(--color-text)]"
         />
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-white font-medium rounded-lg transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
           Add Judge
@@ -71,12 +73,12 @@ export default function JudgesManager({ eventId }) {
 
       {/* Feedback */}
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg mb-4">
+        <div className="text-sm text-red-500 bg-red-500/10 px-4 py-2 rounded-lg mb-4">
           {error}
         </div>
       )}
       {success && (
-        <div className="text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg mb-4">
+        <div className="text-sm text-green-500 bg-green-500/10 px-4 py-2 rounded-lg mb-4">
           {success}
         </div>
       )}
@@ -86,28 +88,28 @@ export default function JudgesManager({ eventId }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-3 px-4 text-slate-500 font-medium">#</th>
-                <th className="text-left py-3 px-4 text-slate-500 font-medium">Name</th>
-                <th className="text-left py-3 px-4 text-slate-500 font-medium">PIN</th>
-                <th className="text-right py-3 px-4 text-slate-500 font-medium">Actions</th>
+              <tr className="border-b border-[var(--color-border)]">
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">#</th>
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">Name</th>
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">PIN</th>
+                <th className="text-right py-3 px-4 text-[var(--color-text-muted)] font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {judges.map((judge) => (
                 <tr
                   key={judge.id}
-                  className="border-b border-slate-100 hover:bg-slate-50 transition"
+                  className="border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition"
                 >
-                  <td className="py-3 px-4 text-slate-900 font-medium">
+                  <td className="py-3 px-4 text-[var(--color-text)] font-medium">
                     {judge.seat_number}
                   </td>
-                  <td className="py-3 px-4 text-slate-700">{judge.name}</td>
-                  <td className="py-3 px-4 text-slate-400 tracking-widest">••••</td>
+                  <td className="py-3 px-4 text-[var(--color-text)]">{judge.name}</td>
+                  <td className="py-3 px-4 text-[var(--color-text-muted)] tracking-widest">••••</td>
                   <td className="py-3 px-4 text-right">
                     <button
                       onClick={() => handleRemove(judge.id, judge.name)}
-                      className="text-red-500 hover:text-red-700 transition-colors p-1"
+                      className="text-red-500 hover:text-red-400 transition-colors p-1"
                       title="Remove judge"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -119,7 +121,7 @@ export default function JudgesManager({ eventId }) {
           </table>
         </div>
       ) : (
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-[var(--color-text-muted)]">
           No judges added yet. Add your first judge above.
         </div>
       )}

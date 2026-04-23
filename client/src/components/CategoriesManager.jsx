@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { categoriesAPI, criteriaAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 /** Maximum acceptable total weight (1.0 = 100%). */
 const MAX_WEIGHT = 1;
@@ -9,6 +10,7 @@ const MAX_WEIGHT = 1;
 const WEIGHT_TOLERANCE = 0.001;
 
 export default function CategoriesManager({ eventId }) {
+  const { isDark } = useTheme();
   const { items: categories, loading: catLoading, error: catError, handleCreate: createCategory, handleDelete: deleteCategory } = useCrudResource(
     categoriesAPI,
     { collectionKey: eventId }
@@ -38,9 +40,9 @@ export default function CategoriesManager({ eventId }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-[var(--color-bg-subtle)] rounded-xl shadow-sm border border-[var(--color-border)] p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Categories & Criteria</h2>
+        <h2 className="text-xl font-semibold text-[var(--color-text)]">Categories & Criteria</h2>
       </div>
 
       {/* Add Category Form */}
@@ -50,7 +52,7 @@ export default function CategoriesManager({ eventId }) {
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           placeholder="Category name (e.g., Evening Gown)"
-          className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+          className="flex-1 px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
         />
         <button
           type="submit"
@@ -82,7 +84,7 @@ export default function CategoriesManager({ eventId }) {
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-[var(--color-text-muted)]">
           No categories added yet. Add your first category above.
         </div>
       )}
@@ -95,12 +97,12 @@ export default function CategoriesManager({ eventId }) {
  */
 function CategoryCard({ category, expanded, onToggle, onDelete }) {
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden">
+    <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
       {/* Category Header */}
-      <div className="flex items-center justify-between bg-slate-50 px-4 py-3">
+      <div className="flex items-center justify-between bg-[var(--color-bg-subtle)] px-4 py-3">
         <button
           onClick={onToggle}
-          className="flex items-center gap-2 text-left font-medium text-slate-900 hover:text-amber-600 transition-colors"
+          className="flex items-center gap-2 text-left font-medium text-[var(--color-text)] hover:text-[var(--color-cta)] transition-colors"
         >
           {expanded ? (
             <ChevronDown className="w-4 h-4" />
@@ -111,7 +113,7 @@ function CategoryCard({ category, expanded, onToggle, onDelete }) {
         </button>
         <button
           onClick={onDelete}
-          className="text-red-500 hover:text-red-700 transition-colors p-1"
+          className="text-red-500 hover:text-red-400 transition-colors p-1"
           title="Delete category"
         >
           <Trash2 className="w-4 h-4" />
@@ -120,7 +122,7 @@ function CategoryCard({ category, expanded, onToggle, onDelete }) {
 
       {/* Criteria Section */}
       {expanded && (
-        <div className="p-4 border-t border-slate-200">
+        <div className="p-4 border-t border-[var(--color-border)]">
           <CriteriaList categoryId={category.id} />
         </div>
       )}
@@ -219,7 +221,7 @@ function CriteriaList({ categoryId }) {
     [categoryId]
   );
 
-  if (loading) return <div className="text-slate-400 text-sm">Loading criteria...</div>;
+  if (loading) return <div className="text-[var(--color-text-muted)] text-sm">Loading criteria...</div>;
 
   return (
     <div>
@@ -227,10 +229,10 @@ function CriteriaList({ categoryId }) {
       <div
         className={`flex items-center justify-between mb-4 px-4 py-3 rounded-lg text-sm ${
           isComplete
-            ? 'bg-green-50 text-green-700 border border-green-200'
+            ? 'bg-green-500/10 text-green-500 border border-green-500/20'
             : isOver
-            ? 'bg-red-50 text-red-700 border border-red-200'
-            : 'bg-amber-50 text-amber-700 border border-amber-200'
+            ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+            : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -254,27 +256,27 @@ function CriteriaList({ categoryId }) {
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-2 px-3 text-slate-500 font-medium">#</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-medium">Criterion</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-medium">Weight</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-medium">Range</th>
-                <th className="text-right py-2 px-3 text-slate-500 font-medium">Actions</th>
+              <tr className="border-b border-[var(--color-border)]">
+                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">#</th>
+                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Criterion</th>
+                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Weight</th>
+                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Range</th>
+                <th className="text-right py-2 px-3 text-[var(--color-text-muted)] font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {criteria.map((c, idx) => (
-                <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
-                  <td className="py-2 px-3 text-slate-400 text-xs">{idx + 1}</td>
-                  <td className="py-2 px-3 text-slate-900 font-medium">{c.name}</td>
-                  <td className="py-2 px-3 text-slate-700">{(c.weight * 100).toFixed(1)}%</td>
-                  <td className="py-2 px-3 text-slate-500">
+                <tr key={c.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition">
+                  <td className="py-2 px-3 text-[var(--color-text-muted)] text-xs">{idx + 1}</td>
+                  <td className="py-2 px-3 text-[var(--color-text)] font-medium">{c.name}</td>
+                  <td className="py-2 px-3 text-[var(--color-text)]">{(c.weight * 100).toFixed(1)}%</td>
+                  <td className="py-2 px-3 text-[var(--color-text-muted)]">
                     {c.min_score} – {c.max_score}
                   </td>
                   <td className="py-2 px-3 text-right">
                     <button
                       onClick={() => handleDeleteCriterion(c.id)}
-                      className="text-red-500 hover:text-red-700 transition-colors"
+                      className="text-red-500 hover:text-red-400 transition-colors"
                       title="Delete criterion"
                     >
                       <Trash2 className="w-4 h-4 inline" />
@@ -294,7 +296,7 @@ function CriteriaList({ categoryId }) {
           value={newCriterion.name}
           onChange={(e) => setNewCriterion((prev) => ({ ...prev, name: e.target.value }))}
           placeholder="Criterion name"
-          className="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+          className="sm:col-span-2 px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
           disabled={isComplete}
         />
         <input
@@ -305,7 +307,7 @@ function CriteriaList({ categoryId }) {
           value={newCriterion.weight}
           onChange={(e) => setNewCriterion((prev) => ({ ...prev, weight: e.target.value }))}
           placeholder="Weight (0-1)"
-          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+          className="px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
           disabled={isComplete}
         />
         <div className="flex gap-2">
@@ -315,7 +317,7 @@ function CriteriaList({ categoryId }) {
             value={newCriterion.min_score}
             onChange={(e) => setNewCriterion((prev) => ({ ...prev, min_score: parseFloat(e.target.value) || 0 }))}
             placeholder="Min"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
             disabled={isComplete}
           />
           <input
@@ -324,14 +326,14 @@ function CriteriaList({ categoryId }) {
             value={newCriterion.max_score}
             onChange={(e) => setNewCriterion((prev) => ({ ...prev, max_score: parseFloat(e.target.value) || 10 }))}
             placeholder="Max"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
             disabled={isComplete}
           />
         </div>
         <button
           type="submit"
           disabled={isComplete}
-          className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center justify-center gap-1 px-3 py-2 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all active:scale-95"
         >
           <Plus className="w-3.5 h-3.5" />
           Add
@@ -339,19 +341,19 @@ function CriteriaList({ categoryId }) {
       </form>
 
       {isComplete && (
-        <div className="text-xs text-green-600 mb-3 text-center">
+        <div className="text-xs text-green-500 mb-3 text-center">
           Weight total is 100%. No more criteria can be added.
         </div>
       )}
 
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+        <div className="text-sm text-red-500 bg-red-500/10 px-3 py-2 rounded-lg">
           {error}
         </div>
       )}
 
       {criteria.length === 0 && (
-        <div className="text-center py-4 text-slate-400 text-sm">
+        <div className="text-center py-4 text-[var(--color-text-muted)] text-sm">
           No criteria added. Add your first criterion above.
         </div>
       )}
