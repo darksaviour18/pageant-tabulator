@@ -234,7 +234,7 @@ export default function JudgeDashboard() {
 
       {/* Category Cards */}
       {scoringData?.categories?.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scoringData.categories.map((cat) => {
             const criteriaCount = cat.criteria?.length || 0;
             const isLocked = cat.is_locked;
@@ -246,12 +246,13 @@ export default function JudgeDashboard() {
                 key={cat.id}
                 onClick={() => handleSelectCategory(cat)}
                 disabled={isLocked}
-                className={`text-left p-5 rounded-xl border-2 transition-all ${
+                aria-label={`${cat.name}: ${isSubmitted ? 'Submitted' : isLocked ? 'Locked' : scored > 0 ? `Draft ${scored}/${criteriaCount}` : 'Not started'}`}
+                className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation ${
                   isSubmitted
-                    ? 'border-green-500/30 bg-green-500/10 cursor-pointer hover:shadow-md'
+                    ? 'border-green-500/30 bg-green-500/10 cursor-pointer hover:shadow-md active:scale-[0.98]'
                     : isLocked
                     ? 'border-[var(--color-border)] bg-[var(--color-bg-subtle)] cursor-not-allowed opacity-60'
-                    : 'border-[var(--color-border)] hover:border-[var(--color-cta)] hover:shadow-md bg-[var(--color-bg-subtle)]'
+                    : 'border-[var(--color-border)] hover:border-[var(--color-cta)] hover:shadow-md bg-[var(--color-bg-subtle)] active:scale-[0.98]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">

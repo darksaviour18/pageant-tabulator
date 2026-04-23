@@ -78,10 +78,11 @@ export default function ScoreSheet({
         id: 'contestant',
         header: 'Contestant',
         size: 180,
+        sticky: 'left',
         cell: ({ row }) => {
           const c = row.original;
           return (
-            <div className="flex items-center gap-3 px-3 py-2">
+            <div className="flex items-center gap-3 px-3 py-2 min-h-[56px]">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-bg-subtle)] text-sm font-bold text-[var(--color-text)]">
                 {c.number}
               </span>
@@ -259,7 +260,7 @@ export default function ScoreSheet({
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-2 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider"
+                      className={`px-2 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ${header.column.columnDef.sticky === 'left' ? 'sticky left-0 z-10 bg-[var(--color-bg)]' : ''}`}
                       style={{ width: header.getSize() }}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -276,7 +277,7 @@ export default function ScoreSheet({
                   className="border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
+                    <td key={cell.id} className={cell.column.columnDef.sticky === 'left' ? 'sticky left-0 z-10 bg-[var(--color-bg-subtle)] border-r border-[var(--color-border)]' : ''}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
