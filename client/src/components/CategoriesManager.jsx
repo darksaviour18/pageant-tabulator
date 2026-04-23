@@ -66,7 +66,7 @@ export default function CategoriesManager({ eventId }) {
         <button
           type="submit"
           disabled={catLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Category
