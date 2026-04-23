@@ -25,6 +25,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
   const queueRef = useRef(new Map()); // key: "contestantId:criteriaId" → score
   const timerRef = useRef(null);
   const syncingRef = useRef(false);
+  const abortRef = useRef(false); // 14.5: Abort flag for stale async loads
   const { reconnectCount } = useSocket();
   const [conflict, setConflict] = useState(null); // { localCount, serverCount, onKeepLocal, onDiscardLocal }
   const [refetchKey, setRefetchKey] = useState(0); // Bump to signal ScoreSheet to re-fetch
@@ -76,6 +77,8 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      // 14.5: Set abort flag on unmount to cancel stale operations
+      abortRef.current = true;
     };
   }, []);
 
@@ -83,7 +86,16 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
   useEffect(() => {
     if (reconnectCount <= 0 || !judgeId || !eventId || !categoryId) return;
 
+    // 14.5: Set abort flag for this connection attempt
+    abortRef.current = false;
+
     const checkConflict = async () => {
+      // 14.5: Check abort flag before async operations
+      if (abortRef.current) {
+        console.log('[useAutoSave] Aborted stale reconnect check');
+        return;
+      }
+
       try {
         // Get local scores
         const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
