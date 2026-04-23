@@ -34,11 +34,14 @@ router.post('/', (req, res, next) => {
       display_order: display_order ?? Math.floor(Date.now() / 1000),
     });
 
-    // 10.3.4: Validate total weight after creation
+    // 10.3.4: Validate total weight after creation - reject if exceeds 100%
     const totalWeight = criteriaService.getTotalWeight(parseInt(categoryId, 10));
-    const warning = totalWeight > 1 ? ` Warning: total weight is ${(totalWeight * 100).toFixed(1)}%, exceeds 100%` : '';
+    if (totalWeight > 1) {
+      criteriaService.delete(criterion.id);
+      return res.status(400).json({ error: `Cannot add criterion: total percentage would exceed 100%. Current: ${(totalWeight * 100).toFixed(1)}%` });
+    }
 
-    return res.status(201).json({ ...criterion, weight_warning: warning || null });
+    return res.status(201).json(criterion);
   } catch (err) {
     next(err);
   }
@@ -85,6 +88,13 @@ router.patch('/:criterionId', (req, res, next) => {
       max_score,
       display_order,
     });
+
+    // Validate total weight after update
+    const totalWeight = criteriaService.getTotalWeight(criterion.category_id);
+    if (totalWeight > 1) {
+      return res.status(400).json({ error: `Cannot update criterion: total percentage would exceed 100%. Current: ${(totalWeight * 100).toFixed(1)}%` });
+    }
+
     return res.json(updated);
   } catch (err) {
     next(err);
