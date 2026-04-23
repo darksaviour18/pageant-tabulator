@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react';
 import { contestantsAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ContestantsManager({ eventId }) {
+  const { isDark } = useTheme();
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
 
@@ -41,9 +43,9 @@ export default function ContestantsManager({ eventId }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-[var(--color-bg-subtle)] rounded-xl shadow-sm border border-[var(--color-border)] p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-slate-900">Contestants</h2>
+        <h2 className="text-xl font-semibold text-[var(--color-text)]">Contestants</h2>
       </div>
 
       {/* Add Contestant Form */}
@@ -54,19 +56,19 @@ export default function ContestantsManager({ eventId }) {
           onChange={(e) => setNumber(e.target.value)}
           placeholder="Contestant #"
           min="1"
-          className="w-32 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+          className="w-32 px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
         />
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Contestant name"
-          className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+          className="flex-1 px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
         />
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-white font-medium rounded-lg transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
           Add Contestant
@@ -75,12 +77,12 @@ export default function ContestantsManager({ eventId }) {
 
       {/* Feedback */}
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg mb-4">
+        <div className="text-sm text-red-500 bg-red-500/10 px-4 py-2 rounded-lg mb-4">
           {error}
         </div>
       )}
       {success && (
-        <div className="text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg mb-4">
+        <div className="text-sm text-green-500 bg-green-500/10 px-4 py-2 rounded-lg mb-4">
           {success}
         </div>
       )}
@@ -90,30 +92,30 @@ export default function ContestantsManager({ eventId }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-3 px-4 text-slate-500 font-medium">#</th>
-                <th className="text-left py-3 px-4 text-slate-500 font-medium">Name</th>
-                <th className="text-left py-3 px-4 text-slate-500 font-medium">Status</th>
-                <th className="text-right py-3 px-4 text-slate-500 font-medium">Actions</th>
+              <tr className="border-b border-[var(--color-border)]">
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">#</th>
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">Name</th>
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">Status</th>
+                <th className="text-right py-3 px-4 text-[var(--color-text-muted)] font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {activeContestants.map((c) => (
                 <tr
                   key={c.id}
-                  className="border-b border-slate-100 hover:bg-slate-50 transition"
+                  className="border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition"
                 >
-                  <td className="py-3 px-4 text-slate-900 font-medium">{c.number}</td>
-                  <td className="py-3 px-4 text-slate-700">{c.name}</td>
+                  <td className="py-3 px-4 text-[var(--color-text)] font-medium">{c.number}</td>
+                  <td className="py-3 px-4 text-[var(--color-text)]">{c.name}</td>
                   <td className="py-3 px-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
                       Active
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
                     <button
                       onClick={() => handleWithdraw(c.id, c.name)}
-                      className="text-red-500 hover:text-red-700 transition-colors p-1"
+                      className="text-red-500 hover:text-red-400 transition-colors p-1"
                       title="Withdraw contestant"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -125,7 +127,7 @@ export default function ContestantsManager({ eventId }) {
           </table>
         </div>
       ) : (
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-[var(--color-text-muted)]">
           No contestants added yet. Add your first contestant above.
         </div>
       )}
