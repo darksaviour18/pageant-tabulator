@@ -4,7 +4,7 @@ import { useCrudResource } from '../hooks/useCrudResource';
 import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 
-/** Maximum acceptable total weight (1.0 = 100%). */
+/** Maximum acceptable total percentage (100%). */
 const MAX_WEIGHT = 1;
 /** Float comparison tolerance. */
 const WEIGHT_TOLERANCE = 0.001;
@@ -18,16 +18,22 @@ export default function CategoriesManager({ eventId }) {
 
   const [expandedId, setExpandedId] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryWeight, setNewCategoryWeight] = useState('1');
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
 
+    const weight = parseFloat(newCategoryWeight) || 1;
     const ok = await createCategory({
       name: newCategoryName.trim(),
       display_order: categories.length + 1,
+      weight,
     });
-    if (ok) setNewCategoryName('');
+    if (ok) {
+      setNewCategoryName('');
+      setNewCategoryWeight('1');
+    }
   };
 
   const handleDeleteCategory = async (id, name) => {
@@ -55,13 +61,23 @@ export default function CategoriesManager({ eventId }) {
       </div>
 
       {/* Add Category Form */}
-      <form onSubmit={handleAddCategory} className="flex gap-3 mb-6">
+      <form onSubmit={handleAddCategory} className="flex flex-wrap gap-3 mb-6">
         <input
           type="text"
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           placeholder="Category name (e.g., Evening Gown)"
-          className="flex-1 px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
+          className="flex-1 min-w-[200px] px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
+        />
+        <input
+          type="number"
+          value={newCategoryWeight}
+          onChange={(e) => setNewCategoryWeight(e.target.value)}
+          placeholder="Weight"
+          min="0"
+          step="0.1"
+          className="w-24 px-3 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)] text-center"
+          title="Category weight for elimination reports"
         />
         <button
           type="submit"
@@ -253,9 +269,9 @@ function CriteriaList({ categoryId }) {
           )}
           <span className="font-medium">
             {isComplete
-              ? 'Weights sum to exactly 100% — valid'
+              ? 'Percentages sum to exactly 100% — valid'
               : isOver
-              ? `Total weight ${weightPercent}% exceeds 100%`
+              ? `Total percentage ${weightPercent}% exceeds 100%`
               : `${weightPercent}% of 100% — ${(remainingWeight * 100).toFixed(1)}% remaining`}
           </span>
         </div>
@@ -269,7 +285,7 @@ function CriteriaList({ categoryId }) {
               <tr className="border-b border-[var(--color-border)]">
                 <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">#</th>
                 <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Criterion</th>
-                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Weight</th>
+                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">%</th>
                 <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Range</th>
                 <th className="text-right py-2 px-3 text-[var(--color-text-muted)] font-medium">Actions</th>
               </tr>
@@ -316,7 +332,7 @@ function CriteriaList({ categoryId }) {
           max="1"
           value={newCriterion.weight}
           onChange={(e) => setNewCriterion((prev) => ({ ...prev, weight: e.target.value }))}
-          placeholder="Weight (0-1)"
+          placeholder="Percentage (0-1)"
           className="px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
           disabled={isComplete}
         />

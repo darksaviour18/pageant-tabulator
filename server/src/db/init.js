@@ -79,6 +79,7 @@ export function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       event_id INTEGER NOT NULL,
       name TEXT NOT NULL,
+      weight REAL DEFAULT 1,
       display_order INTEGER NOT NULL,
       is_locked BOOLEAN DEFAULT 0,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE

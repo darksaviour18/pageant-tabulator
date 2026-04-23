@@ -4,16 +4,16 @@ export const categoriesService = {
   /**
    * Create a new category for an event.
    * @param {number} eventId
-   * @param {{ name: string, display_order: number }} data
+   * @param {{ name: string, display_order: number, weight?: number }} data
    * @returns {object}
    */
-  create(eventId, { name, display_order }) {
+  create(eventId, { name, display_order, weight = 1 }) {
     const db = getDb();
     const result = db
       .prepare(
-        'INSERT INTO categories (event_id, name, display_order) VALUES (?, ?, ?)'
+        'INSERT INTO categories (event_id, name, display_order, weight) VALUES (?, ?, ?, ?)'
       )
-      .run(eventId, name, display_order);
+      .run(eventId, name, display_order, weight);
     return db.prepare('SELECT * FROM categories WHERE id = ?').get(result.lastInsertRowid);
   },
 
@@ -42,10 +42,10 @@ export const categoriesService = {
   /**
    * Update category fields.
    * @param {number} id
-   * @param {{ name?: string, display_order?: number, is_locked?: boolean }} data
+   * @param {{ name?: string, display_order?: number, is_locked?: boolean, weight?: number }} data
    * @returns {object}
    */
-  update(id, { name, display_order, is_locked }) {
+  update(id, { name, display_order, is_locked, weight }) {
     const db = getDb();
     const updates = [];
     const values = [];
@@ -61,6 +61,10 @@ export const categoriesService = {
     if (is_locked !== undefined) {
       updates.push('is_locked = ?');
       values.push(is_locked ? 1 : 0);
+    }
+    if (weight !== undefined) {
+      updates.push('weight = ?');
+      values.push(weight);
     }
 
     if (updates.length === 0) {

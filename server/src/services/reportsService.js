@@ -125,7 +125,7 @@ export const reportsService = {
     // Verify all categories belong to this event
     const categories = db
       .prepare(
-        `SELECT id, name, display_order FROM categories WHERE id IN (${categoryIds.join(',')}) AND event_id = ? ORDER BY display_order`
+        `SELECT id, name, weight, display_order FROM categories WHERE id IN (${categoryIds.join(',')}) AND event_id = ? ORDER BY display_order`
       )
       .all(eventId);
 
@@ -137,12 +137,16 @@ export const reportsService = {
 
     if (contestants.length === 0) return { title: report_title || 'Cross-Category Report', categories, contestants: [], rankings: [] };
 
-    // Build rank matrix: for each category, rank contestants by total score
-    const categoryRanks = {};
+    // Calculate total weights for normalization
+    const totalWeight = categories.reduce((sum, cat) => sum + (cat.weight || 1), 0);
+    const categoryWeightMap = {};
+    categories.forEach(cat => {
+      categoryWeightMap[cat.id] = cat.weight || 1;
+    });
+
     const catIdList = categoryIds.join(',');
 
-    // Use window functions to calculate per-category ranks
-    // First get total scores per contestant per category
+    // Get total scores per contestant per category
     const categoryScores = db
       .prepare(
         `SELECT contestant_id, category_id, SUM(score) as total_score
@@ -152,78 +156,40 @@ export const reportsService = {
       )
       .all();
 
-    // Group by category and calculate ranks
-    const byCategory = {};
-    for (const row of categoryScores) {
-      if (!byCategory[row.category_id]) byCategory[row.category_id] = [];
-      byCategory[row.category_id].push(row);
-    }
-
-    // Calculate ranks within each category
-    for (const catId of categoryIds) {
-      const entries = (byCategory[catId] || [])
-        .sort((a, b) => b.total_score - a.total_score);
-
-      // Assign ranks with ties
-      let currentRank = 1;
-      for (let i = 0; i < entries.length; i++) {
-        if (i > 0 && entries[i].total_score < entries[i - 1].total_score) {
-          currentRank = i + 1;
-        }
-        entries[i].rank = currentRank;
-      }
-
-      categoryRanks[catId] = entries;
-    }
-
-    // Build contestant matrix: contestant → { categoryId: rank }
-    const contestantData = {};
+    // Calculate weighted scores per contestant
+    const contestantWeightedScores = {};
     for (const c of contestants) {
-      contestantData[c.id] = {
+      contestantWeightedScores[c.id] = {
         id: c.id,
         number: c.number,
         name: c.name,
-        category_ranks: {},
-        total_rank: 0,
+        category_scores: {},
+        weighted_total: 0,
       };
     }
 
-    // Fill in ranks per category
-    for (const catId of categoryIds) {
-      for (const entry of categoryRanks[catId] || []) {
-        if (contestantData[entry.contestant_id]) {
-          contestantData[entry.contestant_id].category_ranks[catId] = entry.rank;
-        }
+    for (const row of categoryScores) {
+      const weight = categoryWeightMap[row.category_id] || 1;
+      const normalizedScore = (row.total_score * weight) / totalWeight;
+      
+      if (contestantWeightedScores[row.contestant_id]) {
+        contestantWeightedScores[row.contestant_id].category_scores[row.category_id] = row.total_score;
+        contestantWeightedScores[row.contestant_id].weighted_total += normalizedScore;
       }
     }
 
-    // Calculate total rank (sum of all category ranks)
-    for (const c of contestants) {
-      const data = contestantData[c.id];
-      let totalRank = 0;
-      let categoriesWithRank = 0;
-      for (const catId of categoryIds) {
-        if (data.category_ranks[catId] !== undefined) {
-          totalRank += data.category_ranks[catId];
-          categoriesWithRank++;
-        }
-      }
-      data.total_rank = totalRank;
-      data.categories_scored = categoriesWithRank;
-    }
-
-    // Rank contestants by total_rank (lower = better)
-    const ranked = Object.values(contestantData)
-      .filter(c => c.categories_scored > 0)
+    // Rank contestants by weighted total (higher = better)
+    const ranked = Object.values(contestantWeightedScores)
+      .filter(c => Object.keys(c.category_scores).length > 0)
       .sort((a, b) => {
-        if (a.total_rank !== b.total_rank) return a.total_rank - b.total_rank;
+        if (b.weighted_total !== a.weighted_total) return b.weighted_total - a.weighted_total;
         return a.number - b.number; // Tie-break by contestant number
       });
 
     // Assign final overall ranks
     let currentRank = 1;
     for (let i = 0; i < ranked.length; i++) {
-      if (i > 0 && ranked[i].total_rank > ranked[i - 1].total_rank) {
+      if (i > 0 && ranked[i].weighted_total < ranked[i - 1].weighted_total) {
         currentRank = i + 1;
       }
       ranked[i].overall_rank = currentRank;
@@ -231,7 +197,7 @@ export const reportsService = {
 
     const report = {
       title: report_title || 'Cross-Category Consolidation Report',
-      categories: categories.map(c => ({ id: c.id, name: c.name, display_order: c.display_order })),
+      categories: categories.map(c => ({ id: c.id, name: c.name, weight: c.weight, display_order: c.display_order })),
       contestants: ranked,
     };
 

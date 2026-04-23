@@ -609,10 +609,12 @@ function CrossCategoryReport({ report, event, signatureType, customTitle }) {
         <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Categories Included</h3>
         <div className="flex flex-wrap gap-3">
           {report.categories.map((c) => (
-            <span key={c.id} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-700">{c.name}</span>
+            <span key={c.id} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-700">
+              {c.name} {c.weight && c.weight !== 1 ? `(${c.weight}x)` : ''}
+            </span>
           ))}
         </div>
-        <p className="text-xs text-slate-400 mt-2">Note: Rankings are from individual categories. Total is sum of ranks. Lower total rank = better placement.</p>
+        <p className="text-xs text-slate-400 mt-2">Note: Scores are weighted by category weight. Higher total = better placement.</p>
       </div>
 
       <div className="mb-8">
@@ -626,7 +628,7 @@ function CrossCategoryReport({ report, event, signatureType, customTitle }) {
               {report.categories.map((c) => (
                 <th key={c.id} className="border border-slate-600 px-3 py-2 text-center text-xs">{c.name}</th>
               ))}
-              <th className="border border-slate-600 px-3 py-2 text-center font-semibold">Total</th>
+              <th className="border border-slate-600 px-3 py-2 text-center font-semibold">Weighted Score</th>
             </tr>
           </thead>
           <tbody>
@@ -639,10 +641,10 @@ function CrossCategoryReport({ report, event, signatureType, customTitle }) {
                 <td className="border border-slate-300 px-3 py-2 font-medium">{c.name}</td>
                 {report.categories.map((cat) => (
                   <td key={cat.id} className="border border-slate-300 px-3 py-2 text-center font-mono">
-                    {c.category_ranks[cat.id] !== undefined ? c.category_ranks[cat.id] : '—'}
+                    {c.category_scores[cat.id] !== undefined ? c.category_scores[cat.id].toFixed(2) : '—'}
                   </td>
                 ))}
-                <td className="border border-slate-300 px-3 py-2 text-center font-bold">{c.total_rank}</td>
+                <td className="border border-slate-300 px-3 py-2 text-center font-bold">{c.weighted_total.toFixed(4)}</td>
               </tr>
             ))}
           </tbody>

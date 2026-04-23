@@ -14,7 +14,7 @@ function getIo(req) {
  */
 router.post('/', (req, res, next) => {
   const { eventId } = req.params;
-  const { name, display_order } = req.body;
+  const { name, display_order, weight } = req.body;
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Category name is required' });
@@ -30,6 +30,7 @@ router.post('/', (req, res, next) => {
     const category = categoriesService.create(parseInt(eventId, 10), {
       name: name.trim(),
       display_order: order,
+      weight: weight ?? 1,
     });
     return res.status(201).json(category);
   } catch (err) {
@@ -58,7 +59,7 @@ router.get('/', (req, res, next) => {
  */
 router.patch('/:categoryId', async (req, res, next) => {
   const { categoryId } = req.params;
-  const { name, display_order, is_locked } = req.body;
+  const { name, display_order, is_locked, weight } = req.body;
 
   try {
     const category = categoriesService.getById(parseInt(categoryId, 10));
@@ -70,6 +71,7 @@ router.patch('/:categoryId', async (req, res, next) => {
       name: name?.trim(),
       display_order,
       is_locked,
+      weight,
     });
 
     // 10.3.5: Broadcast category lock/unlock
