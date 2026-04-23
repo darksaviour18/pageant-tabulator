@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Shield, AlertCircle } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 const ADMIN_SESSION_KEY = 'admin_session';
 
@@ -56,26 +57,28 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
+      <ThemeToggle className="fixed top-4 right-4" />
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-500/10 mb-4">
-            <Shield className="w-8 h-8 text-amber-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[var(--color-primary-light)] to-[var(--color-secondary-light)] mb-4 ring-1 ring-[var(--color-primary)]">
+            <Shield className="w-10 h-10 text-[var(--color-cta)]" />
           </div>
-          <h1 className="text-2xl font-bold text-white">
-            Pageant Tabulator <span className="text-amber-400">Pro</span>
+          <h1 className="text-3xl font-bold text-[var(--color-text)] tracking-tight">
+            Pageant Tabulator <span className="text-[var(--color-cta)]">Pro</span>
           </h1>
-          <p className="text-slate-400 mt-1">Admin Dashboard</p>
+          <p className="text-[var(--color-text-muted)] mt-2 text-sm">Admin Dashboard</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-6">Admin Authentication</h2>
+        <div className="bg-[var(--color-bg-elevated)] backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-[var(--color-border)]">
+          <h2 className="text-xl font-semibold text-[var(--color-text)] mb-6">Admin Authentication</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
                 Admin Secret
               </label>
               <input
@@ -83,13 +86,13 @@ export default function AdminLogin() {
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
                 placeholder="Enter admin secret"
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                className="w-full px-4 py-3 min-h-[48px] border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)]/50 focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)]"
                 autoFocus
               />
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-[var(--color-error)] bg-[var(--color-error)]/10 px-4 py-3 rounded-lg border border-[var(--color-error)]/20">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -98,7 +101,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading || !secret.trim()}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+              className="w-full py-3 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
             >
               {loading ? 'Authenticating...' : 'Sign In'}
             </button>
