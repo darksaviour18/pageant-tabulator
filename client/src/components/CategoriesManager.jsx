@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { categoriesAPI, criteriaAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 /** Maximum acceptable total weight (1.0 = 100%). */
 const MAX_WEIGHT = 1;
@@ -9,6 +10,7 @@ const MAX_WEIGHT = 1;
 const WEIGHT_TOLERANCE = 0.001;
 
 export default function CategoriesManager({ eventId }) {
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const { items: categories, loading: catLoading, error: catError, handleCreate: createCategory, handleDelete: deleteCategory } = useCrudResource(
     categoriesAPI,
     { collectionKey: eventId }
@@ -29,8 +31,17 @@ export default function CategoriesManager({ eventId }) {
   };
 
   const handleDeleteCategory = async (id, name) => {
-    if (!confirm(`Delete category "${name}"? All criteria will also be removed.`)) return;
-    await deleteCategory(id);
+    setConfirmDelete({
+      title: 'Delete Category',
+      message: `Delete "${name}"? All criteria will also be removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmDelete(null);
+        await deleteCategory(id);
+      },
+      onCancel: () => setConfirmDelete(null),
+    });
   };
 
   const toggleExpand = (id) => {
@@ -86,6 +97,7 @@ export default function CategoriesManager({ eventId }) {
           No categories added yet. Add your first category above.
         </div>
       )}
+      <ConfirmDialog {...confirmDelete} />
     </div>
   );
 }

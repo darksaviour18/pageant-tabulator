@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { judgesAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function JudgesManager({ eventId }) {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const { items: judges, loading, error, success, handleCreate, handleDelete } = useCrudResource(
     judgesAPI,
@@ -32,8 +34,17 @@ export default function JudgesManager({ eventId }) {
   };
 
   const handleRemove = async (judgeId, judgeName) => {
-    if (!confirm(`Remove judge "${judgeName}"?`)) return;
-    await handleDelete(judgeId);
+    setConfirmDelete({
+      title: 'Remove Judge',
+      message: `Remove "${judgeName}" from this event? This cannot be undone.`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmDelete(null);
+        await handleDelete(judgeId);
+      },
+      onCancel: () => setConfirmDelete(null),
+    });
   };
 
   return (
@@ -123,6 +134,7 @@ export default function JudgesManager({ eventId }) {
           No judges added yet. Add your first judge above.
         </div>
       )}
+      <ConfirmDialog {...confirmDelete} />
     </div>
   );
 }

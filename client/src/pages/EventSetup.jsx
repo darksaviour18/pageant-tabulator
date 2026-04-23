@@ -13,6 +13,7 @@ export default function EventSetup() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -40,9 +41,11 @@ export default function EventSetup() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setSubmitting(true);
 
     if (!eventName.trim()) {
       setError('Event name is required');
+      setSubmitting(false);
       return;
     }
 
@@ -64,7 +67,6 @@ export default function EventSetup() {
         setEventId(res.data.id);
         setStatus(res.data.status);
         setIsEditing(true);
-        // Save tabulators after creation
         if (tabulatorList.length > 0) {
           await eventsAPI.update(res.data.id, { tabulators: tabulatorList });
         }
@@ -72,6 +74,8 @@ export default function EventSetup() {
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save event');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -161,9 +165,20 @@ export default function EventSetup() {
           )}
           <button
             type="submit"
-            className="px-6 py-2.5 bg-[var(--color-cta)] hover:opacity-90 text-white font-medium rounded-lg transition-all active:scale-95"
+            disabled={submitting}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-white font-medium rounded-lg transition-all active:scale-95"
           >
-            {isEditing ? 'Save Changes' : 'Create Event'}
+            {submitting ? (
+              <>
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Saving...
+              </>
+            ) : (
+              isEditing ? 'Save Changes' : 'Create Event'
+            )}
           </button>
         </form>
       </div>

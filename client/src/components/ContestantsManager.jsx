@@ -2,10 +2,12 @@ import { useState, useMemo } from 'react';
 import { contestantsAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function ContestantsManager({ eventId }) {
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const { items: contestants, loading, error, success, handleCreate, handleDelete } = useCrudResource(
     contestantsAPI,
@@ -36,8 +38,17 @@ export default function ContestantsManager({ eventId }) {
   };
 
   const handleWithdraw = async (id, contestantName) => {
-    if (!confirm(`Mark "${contestantName}" as withdrawn?`)) return;
-    await handleDelete(id);
+    setConfirmDelete({
+      title: 'Withdraw Contestant',
+      message: `Mark "${contestantName}" as withdrawn? They will no longer appear in scoring.`,
+      confirmLabel: 'Withdraw',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmDelete(null);
+        await handleDelete(id);
+      },
+      onCancel: () => setConfirmDelete(null),
+    });
   };
 
   return (
@@ -129,6 +140,7 @@ export default function ContestantsManager({ eventId }) {
           No contestants added yet. Add your first contestant above.
         </div>
       )}
+      <ConfirmDialog {...confirmDelete} />
     </div>
   );
 }

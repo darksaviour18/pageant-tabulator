@@ -242,15 +242,34 @@ export default function PrintReport() {
 
           {reportType === 'cross_category' && (
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Categories</label>
-              <div className="flex flex-wrap gap-2 p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[300px]">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-[var(--color-text)]">Categories</label>
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategoryIds(categories.map(c => c.id))}
+                    className="text-[var(--color-primary)] hover:underline"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-[var(--color-text-muted)]">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategoryIds([])}
+                    className="text-[var(--color-primary)] hover:underline"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 p-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-subtle)] min-h-[80px] max-h-[200px] overflow-y-auto">
                 {categories.length === 0 && (
                   <span className="text-sm text-[var(--color-text-muted)]">Select an event first</span>
                 )}
                 {categories.map((c) => {
                   const checked = selectedCategoryIds.includes(c.id);
                   return (
-                    <label key={c.id} className="flex items-center gap-1.5 text-sm">
+                    <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -261,13 +280,18 @@ export default function PrintReport() {
                               : prev.filter((id) => id !== c.id)
                           );
                         }}
-                        className="text-amber-600 focus:ring-amber-500"
+                        className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
                       />
-                      {c.name}
+                      <span className="text-[var(--color-text)]">{c.name}</span>
                     </label>
                   );
                 })}
               </div>
+              {selectedCategoryIds.length > 0 && (
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  {selectedCategoryIds.length} of {categories.length} categories selected
+                </p>
+              )}
             </div>
           )}
 
@@ -399,12 +423,20 @@ export default function PrintReport() {
       </div>
 
       {/* Report Content */}
-      {report && (
+      {(report || loading) && (
         <div id="print-report" className="print-report bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-          {reportType === 'category_detail' ? (
-            <CategoryDetailReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--color-accent)] mb-4" />
+              <p className="text-lg font-medium text-slate-700">Generating Report...</p>
+              <p className="text-sm text-slate-500 mt-1">Calculating scores and rankings</p>
+            </div>
           ) : (
-            <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
+            reportType === 'category_detail' ? (
+              <CategoryDetailReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
+            ) : (
+              <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
+            )
           )}
         </div>
       )}

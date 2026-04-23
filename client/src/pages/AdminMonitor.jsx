@@ -3,6 +3,7 @@ import axios from 'axios';
 import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
 import { submissionsAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 import {
   Eye,
   Lock,
@@ -18,9 +19,10 @@ export default function AdminMonitor() {
   const [categories, setCategories] = useState([]);
   const [progress, setProgress] = useState({}); // { "judgeId:categoryId": { scored, total, submitted } }
   const [loading, setLoading] = useState(true);
-  const [unlocking, setUnlocking] = useState(null); // "judgeId:categoryId" while unlocking
+  const [unlocking, setUnlocking] = useState(null);
   const [unlockMsg, setUnlockMsg] = useState(null);
-  const [lockStatus, setLockStatus] = useState({}); // { categoryId: isLocked }
+  const [lockStatus, setLockStatus] = useState({});
+  const [confirmDialog, setConfirmDialog] = useState(null); // { categoryId: isLocked }
 
   // 11.6.1: Live score preview state
   const [previewJudge, setPreviewJudge] = useState(null); // { judge, category, scores }
@@ -122,41 +124,57 @@ export default function AdminMonitor() {
   }, [onEvent]);
 
   const handleUnlock = useCallback(async (judgeId, judgeName, categoryId, categoryName) => {
-    const key = `${judgeId}:${categoryId}`;
-    if (!confirm(`Unlock "${categoryName}" for ${judgeName}? They will be able to edit scores again.`)) return;
-
-    setUnlocking(key);
-    try {
-      await submissionsAPI.unlockCategory(judgeId, categoryId);
-      setProgress((prev) => ({
-        ...prev,
-        [key]: { ...(prev[key] || {}), submitted: false },
-      }));
-      setUnlockMsg(`Unlocked "${categoryName}" for ${judgeName}`);
-      setTimeout(() => setUnlockMsg(null), 4000);
-    } catch (err) {
-      setUnlockMsg(err.response?.data?.error || 'Failed to unlock');
-      setTimeout(() => setUnlockMsg(null), 4000);
-    } finally {
-      setUnlocking(null);
-    }
+    setConfirmDialog({
+      title: 'Unlock Category',
+      message: `Unlock "${categoryName}" for ${judgeName}? They will be able to edit scores again.`,
+      confirmLabel: 'Unlock',
+      variant: 'default',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        const key = `${judgeId}:${categoryId}`;
+        setUnlocking(key);
+        try {
+          await submissionsAPI.unlockCategory(judgeId, categoryId);
+          setProgress((prev) => ({
+            ...prev,
+            [key]: { ...(prev[key] || {}), submitted: false },
+          }));
+          setUnlockMsg(`Unlocked "${categoryName}" for ${judgeName}`);
+          setTimeout(() => setUnlockMsg(null), 4000);
+        } catch (err) {
+          setUnlockMsg(err.response?.data?.error || 'Failed to unlock');
+          setTimeout(() => setUnlockMsg(null), 4000);
+        } finally {
+          setUnlocking(null);
+        }
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
   }, []);
 
   // 10.2.7: Toggle category-level lock/unlock
   const handleToggleCategoryLock = useCallback(async (cat) => {
     const newLocked = !lockStatus[cat.id];
     const action = newLocked ? 'Lock' : 'Unlock';
-    if (!confirm(`${action} "${cat.name}" for ALL judges?`)) return;
-
-    try {
-      const res = await categoriesAPI.update(cat.id, { is_locked: newLocked });
-      setLockStatus((prev) => ({ ...prev, [cat.id]: res.data.is_locked }));
-      setUnlockMsg(`${cat.name} ${newLocked ? 'locked' : 'unlocked'} for all judges`);
-      setTimeout(() => setUnlockMsg(null), 4000);
-    } catch (err) {
-      setUnlockMsg(err.response?.data?.error || `Failed to ${action.toLowerCase()} ${cat.name}`);
-      setTimeout(() => setUnlockMsg(null), 4000);
-    }
+    setConfirmDialog({
+      title: `${action} Category`,
+      message: `${action} "${cat.name}" for ALL judges?`,
+      confirmLabel: action,
+      variant: newLocked ? 'danger' : 'default',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          const res = await categoriesAPI.update(cat.id, { is_locked: newLocked });
+          setLockStatus((prev) => ({ ...prev, [cat.id]: res.data.is_locked }));
+          setUnlockMsg(`${cat.name} ${newLocked ? 'locked' : 'unlocked'} for all judges`);
+          setTimeout(() => setUnlockMsg(null), 4000);
+        } catch (err) {
+          setUnlockMsg(err.response?.data?.error || `Failed to ${action.toLowerCase()} ${cat.name}`);
+          setTimeout(() => setUnlockMsg(null), 4000);
+        }
+      },
+      onCancel: () => setConfirmDialog(null),
+    });
   }, [lockStatus]);
 
   // 11.6.1: Fetch judge's scores for a category and show preview
@@ -330,8 +348,12 @@ export default function AdminMonitor() {
         </>
       ) : (
         <div className="text-center py-16 bg-[var(--color-bg-subtle)] rounded-xl border border-[var(--color-border)]">
-          <p className="text-[var(--color-text-muted)]">
+          <AlertCircle className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-4 opacity-50" />
+          <p className="text-[var(--color-text-secondary)]">
             {judges.length === 0 ? 'No judges added yet.' : 'No categories configured.'}
+          </p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-2">
+            Go to the <strong>Setup</strong> tab to add {judges.length === 0 ? 'judges' : 'categories'}.
           </p>
         </div>
       )}
@@ -343,6 +365,8 @@ export default function AdminMonitor() {
           onClose={() => setPreviewJudge(null)}
         />
       )}
+
+      <ConfirmDialog {...confirmDialog} />
     </div>
   );
 }
