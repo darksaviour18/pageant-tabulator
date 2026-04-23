@@ -14,7 +14,7 @@ const Input = forwardRef(function Input(
   const { isDark } = useTheme();
 
   const inputClasses = `
-    w-full px-4 py-3 rounded-lg font-medium
+    w-full px-4 py-3 min-h-[48px] rounded-lg font-medium
     transition-all duration-150 ease-out
     ${isDark 
       ? 'bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:border-pink-400 focus:ring-pink-400/20' 
@@ -67,7 +67,7 @@ const Select = forwardRef(function Select(
   const { isDark } = useTheme();
 
   const selectClasses = `
-    w-full px-4 py-3 rounded-lg font-medium appearance-none cursor-pointer
+    w-full px-4 py-3 min-h-[48px] rounded-lg font-medium appearance-none cursor-pointer
     transition-all duration-150 ease-out
     bg-no-repeat bg-right
     ${isDark 
@@ -126,7 +126,7 @@ const Textarea = forwardRef(function Textarea(
   const { isDark } = useTheme();
 
   const textareaClasses = `
-    w-full px-4 py-3 rounded-lg font-medium
+    w-full px-4 py-3 min-h-[48px] rounded-lg font-medium
     transition-all duration-150 ease-out
     resize-none
     ${isDark 

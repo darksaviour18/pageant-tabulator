@@ -25,9 +25,9 @@ const variants = {
 };
 
 const sizes = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2.5 text-sm',
-  lg: 'px-6 py-3 text-base',
+  sm: 'px-3 py-2 min-h-[40px] text-sm',
+  md: 'px-4 py-2.5 min-h-[48px] text-sm',
+  lg: 'px-6 py-3 min-h-[56px] text-base',
 };
 
 const Button = forwardRef(function Button(
