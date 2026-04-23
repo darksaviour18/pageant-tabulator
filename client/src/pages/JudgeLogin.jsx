@@ -130,9 +130,9 @@ export default function JudgeLogin() {
                     setLoadingJudges(false);
                   }
                 }}
-                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
+                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
                   focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
-                  transition-all duration-200"
+                  transition-all duration-200 touch-manipulation"
                 disabled={events.length === 0}
               >
                 <option value="">Choose an event...</option>
@@ -157,9 +157,9 @@ export default function JudgeLogin() {
               <select
                 value={seatNumber}
                 onChange={(e) => setSeatNumber(e.target.value)}
-                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
+                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
                   focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
-                  transition-all duration-200 disabled:opacity-50"
+                  transition-all duration-200 touch-manipulation disabled:opacity-50"
                 disabled={!eventId || judges.length === 0 || loadingJudges}
               >
                 <option value="">Select your seat...</option>
@@ -186,10 +186,10 @@ export default function JudgeLogin() {
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 placeholder="••••"
                 maxLength={4}
-                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg 
+                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg 
                   text-center text-2xl tracking-[0.5em] font-mono text-zinc-100 placeholder-zinc-600
                   focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
-                  transition-all duration-200 disabled:opacity-50"
+                  transition-all duration-200 touch-manipulation disabled:opacity-50"
                 disabled={!seatNumber}
               />
             </div>
