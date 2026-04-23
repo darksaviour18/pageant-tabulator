@@ -3,6 +3,7 @@ import { eventsAPI, categoriesAPI } from '../api';
 import { reportsAPI, eliminationRoundsAPI } from '../api';
 import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw } from 'lucide-react';
 import EliminationRoundManager from '../components/EliminationRoundManager';
+import { useTheme } from '../context/ThemeContext';
 
 const REPORT_TYPES = [
   { id: 'category_detail', label: 'Category Detail (Per-Category Scores)' },
@@ -10,6 +11,7 @@ const REPORT_TYPES = [
 ];
 
 export default function PrintReport() {
+  const { isDark } = useTheme();
   const [report, setReport] = useState(null);
   const [reportType, setReportType] = useState('category_detail');
   const [events, setEvents] = useState([]);
@@ -191,17 +193,17 @@ export default function PrintReport() {
       {/* Controls - hidden when printing */}
       <div className="no-print space-y-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-slate-900">Reports & Printing</h2>
+          <h2 className="text-xl font-semibold text-[var(--color-text)]">Reports & Printing</h2>
         </div>
 
         <div className="flex flex-wrap gap-3 items-end">
           {/* Report Type Selector */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Report Type</label>
+            <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Report Type</label>
             <select
               value={reportType}
               onChange={handleReportTypeChange}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[250px]"
+              className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[250px]"
             >
               {REPORT_TYPES.map((t) => (
                 <option key={t.id} value={t.id}>{t.label}</option>
@@ -210,11 +212,11 @@ export default function PrintReport() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Event</label>
+            <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Event</label>
             <select
               value={eventId}
               onChange={handleEventChange}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[200px]"
+              className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[200px]"
             >
               <option value="">Select event...</option>
               {events.map((e) => (
@@ -225,12 +227,12 @@ export default function PrintReport() {
 
           {reportType === 'category_detail' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Category</label>
               <select
                 value={selectedCategoryId}
                 onChange={(e) => setSelectedCategoryId(e.target.value)}
                 disabled={!eventId}
-                className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[200px] disabled:bg-slate-100"
+                className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[200px] disabled:opacity-50"
               >
                 <option value="">Select category...</option>
                 {categories.map((c) => (
@@ -242,10 +244,10 @@ export default function PrintReport() {
 
           {reportType === 'cross_category' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Categories</label>
-              <div className="flex flex-wrap gap-2 p-2 border border-slate-300 rounded-lg bg-white min-w-[300px]">
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Categories</label>
+              <div className="flex flex-wrap gap-2 p-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[300px]">
                 {categories.length === 0 && (
-                  <span className="text-sm text-slate-400">Select an event first</span>
+                  <span className="text-sm text-[var(--color-text-muted)]">Select an event first</span>
                 )}
                 {categories.map((c) => {
                   const checked = selectedCategoryIds.includes(c.id);
@@ -273,11 +275,11 @@ export default function PrintReport() {
 
           {rounds.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Filter by Round</label>
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Filter by Round</label>
               <select
                 value={selectedRoundId}
                 onChange={(e) => setSelectedRoundId(e.target.value)}
-                className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[200px]"
+                className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[200px]"
               >
                 <option value="">All contestants</option>
                 {rounds.map((r) => (
@@ -289,23 +291,23 @@ export default function PrintReport() {
 
           {/* Report Title */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Report Title (optional)</label>
+            <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Report Title (optional)</label>
             <input
               type="text"
               value={reportTitle}
               onChange={(e) => setReportTitle(e.target.value)}
               placeholder="Default title will be used"
-              className="px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none min-w-[250px]"
+              className="px-3 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[250px]"
             />
           </div>
 
           {/* Signature Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Signatures</label>
+            <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Signatures</label>
             <select
               value={signatureType}
               onChange={(e) => setSignatureType(e.target.value)}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-white min-w-[180px]"
+              className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[180px]"
             >
               <option value="judges">Judges' Signatures</option>
               <option value="tabulators">Tabulators</option>
@@ -315,7 +317,7 @@ export default function PrintReport() {
           <button
             onClick={handleGenerate}
             disabled={loading || !eventId || (reportType === 'category_detail' && !selectedCategoryId) || (reportType === 'cross_category' && selectedCategoryIds.length === 0)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all active:scale-95"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
             Generate Report
@@ -353,27 +355,27 @@ export default function PrintReport() {
         </div>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg">{error}</div>
+          <div className="text-sm text-red-500 bg-red-500/10 px-4 py-3 rounded-lg">{error}</div>
         )}
       </div>
 
       {/* Report History Sidebar */}
       <div className={`no-print transition-all duration-300 ease-in-out ${sidebarOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Saved Reports</h3>
+        <div className="bg-[var(--color-bg-subtle)] border border-[var(--color-border)] rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">Saved Reports</h3>
           {savedReports.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">No saved reports yet. Generate and save a report to see it here.</p>
+            <p className="text-sm text-[var(--color-text-muted)] italic">No saved reports yet. Generate and save a report to see it here.</p>
           ) : (
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {savedReports.map((saved) => (
                 <div
                   key={saved.id}
                   onClick={() => handleLoadSavedReport(saved)}
-                  className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg hover:border-amber-300 hover:bg-amber-50 cursor-pointer transition-colors group"
+                  className="flex items-center justify-between p-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-cta)] hover:bg-[var(--color-cta)]/10 cursor-pointer transition-colors group"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{saved.report_title}</p>
-                    <p className="text-xs text-slate-500">{saved.report_type === 'category_detail' ? 'Category Detail' : 'Cross-Category'} • {new Date(saved.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium text-[var(--color-text)] truncate">{saved.report_title}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{saved.report_type === 'category_detail' ? 'Category Detail' : 'Cross-Category'} • {new Date(saved.created_at).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
                     <button
