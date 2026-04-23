@@ -238,7 +238,7 @@ function CriteriaList({ categoryId }) {
   const handleDeleteCriterion = useCallback(
     async (id) => {
       try {
-        await criteriaAPI.delete(id);
+        await criteriaAPI.delete(categoryId, id);
         setCriteria((prev) => prev.filter((c) => c.id !== id));
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete criterion');

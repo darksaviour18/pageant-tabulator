@@ -34,7 +34,6 @@ router.post('/', (req, res, next) => {
       display_order: display_order ?? Math.floor(Date.now() / 1000),
     });
 
-    // 10.3.4: Validate total weight after creation - reject if exceeds 100%
     const totalWeight = criteriaService.getTotalWeight(parseInt(categoryId, 10));
     if (totalWeight > 1) {
       criteriaService.delete(criterion.id);
@@ -63,55 +62,21 @@ router.get('/', (req, res, next) => {
 });
 
 /**
- * PATCH /api/criteria/:criterionId
- * Update a criterion.
- */
-router.patch('/:criterionId', (req, res, next) => {
-  const { criterionId } = req.params;
-  const { name, weight, min_score, max_score, display_order } = req.body;
-
-  try {
-    const criterion = criteriaService.getById(parseInt(criterionId, 10));
-    if (!criterion) {
-      return res.status(404).json({ error: 'Criterion not found' });
-    }
-
-    // 11.1.2: Validate weight range on update
-    if (weight !== undefined && (typeof weight !== 'number' || weight < 0 || weight > 1)) {
-      return res.status(400).json({ error: 'Weight must be a number between 0 and 1 (representing 0% to 100%)' });
-    }
-
-    const updated = criteriaService.update(parseInt(criterionId, 10), {
-      name: name?.trim(),
-      weight,
-      min_score,
-      max_score,
-      display_order,
-    });
-
-    // Validate total weight after update
-    const totalWeight = criteriaService.getTotalWeight(criterion.category_id);
-    if (totalWeight > 1) {
-      return res.status(400).json({ error: `Cannot update criterion: total percentage would exceed 100%. Current: ${(totalWeight * 100).toFixed(1)}%` });
-    }
-
-    return res.json(updated);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * DELETE /api/criteria/:criterionId
+ * DELETE /api/categories/:categoryId/criteria/:criterionId
  * Delete a criterion.
  */
 router.delete('/:criterionId', (req, res, next) => {
-  const { criterionId } = req.params;
+  const { categoryId, criterionId } = req.params;
 
   try {
     const criterion = criteriaService.getById(parseInt(criterionId, 10));
     if (!criterion) {
       return res.status(404).json({ error: 'Criterion not found' });
+    }
+
+    // Verify criterion belongs to this category
+    if (criterion.category_id !== parseInt(categoryId, 10)) {
+      return res.status(404).json({ error: 'Criterion not found for this category' });
     }
 
     criteriaService.delete(parseInt(criterionId, 10));

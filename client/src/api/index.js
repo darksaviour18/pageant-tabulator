@@ -35,7 +35,7 @@ export const categoriesAPI = {
   create: (eventId, data) => api.post(`/events/${eventId}/categories`, data),
   getAll: (eventId) => api.get(`/events/${eventId}/categories`),
   update: (id, data) => api.patch(`/categories/${id}`, data),
-  delete: (id) => api.delete(`/categories/${id}`),
+  delete: (eventId, categoryId) => api.delete(`/events/${eventId}/categories/${categoryId}`),
 };
 
 // --- Criteria ---
@@ -43,7 +43,7 @@ export const criteriaAPI = {
   create: (categoryId, data) => api.post(`/categories/${categoryId}/criteria`, data),
   getAll: (categoryId) => api.get(`/categories/${categoryId}/criteria`),
   update: (id, data) => api.patch(`/criteria/${id}`, data),
-  delete: (id) => api.delete(`/criteria/${id}`),
+  delete: (categoryId, criterionId) => api.delete(`/categories/${categoryId}/criteria/${criterionId}`),
 };
 
 // --- Auth ---
@@ -76,7 +76,7 @@ export const reportsAPI = {
   getCrossCategoryReport: (eventId, data) => api.post(`/reports/${eventId}/cross-category`, data),
   saveReport: (data) => api.post('/reports/save', data),
   getSavedReports: (eventId) => api.get(`/reports/saved?event_id=${eventId}`),
-  deleteSavedReport: (id) => api.delete(`/reports/saved/${id}`),
+  deleteSavedReport: (eventId, id) => api.delete(`/reports/saved/${id}?event_id=${eventId}`),
 };
 
 // --- Elimination Rounds ---
@@ -84,5 +84,5 @@ export const eliminationRoundsAPI = {
   create: (data) => api.post('/elimination-rounds', data),
   getAll: (eventId) => api.get(`/elimination-rounds?event_id=${eventId}`),
   getQualifiers: (roundId) => api.get(`/elimination-rounds/${roundId}/qualifiers`),
-  delete: (roundId) => api.delete(`/elimination-rounds/${roundId}`),
+  delete: (eventId, roundId) => api.delete(`/elimination-rounds/${roundId}?event_id=${eventId}`),
 };

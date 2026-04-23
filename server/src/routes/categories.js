@@ -90,16 +90,21 @@ router.patch('/:categoryId', async (req, res, next) => {
 });
 
 /**
- * DELETE /api/categories/:categoryId
+ * DELETE /api/events/:eventId/categories/:categoryId
  * Delete a category (cascades to criteria).
  */
 router.delete('/:categoryId', (req, res, next) => {
-  const { categoryId } = req.params;
+  const { eventId, categoryId } = req.params;
 
   try {
     const category = categoriesService.getById(parseInt(categoryId, 10));
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Verify category belongs to this event
+    if (category.event_id !== parseInt(eventId, 10)) {
+      return res.status(404).json({ error: 'Category not found for this event' });
     }
 
     categoriesService.delete(parseInt(categoryId, 10));

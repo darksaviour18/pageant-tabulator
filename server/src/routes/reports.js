@@ -108,11 +108,16 @@ router.post('/save', (req, res, next) => {
 });
 
 /**
- * DELETE /api/reports/saved/:id
+ * DELETE /api/reports/saved/:id?event_id=X
  * Delete a saved report configuration.
  */
 router.delete('/saved/:id', (req, res, next) => {
   const { id } = req.params;
+  const { event_id } = req.query;
+
+  if (!event_id) {
+    return res.status(400).json({ error: 'event_id query parameter is required' });
+  }
 
   try {
     const db = getDb();
@@ -120,6 +125,11 @@ router.delete('/saved/:id', (req, res, next) => {
 
     if (!saved) {
       return res.status(404).json({ error: 'Saved report not found' });
+    }
+
+    // Verify report belongs to this event
+    if (saved.event_id !== parseInt(event_id, 10)) {
+      return res.status(404).json({ error: 'Saved report not found for this event' });
     }
 
     db.prepare('DELETE FROM saved_reports WHERE id = ?').run(parseInt(id, 10));

@@ -125,18 +125,28 @@ router.get('/:roundId/qualifiers', (req, res, next) => {
 });
 
 /**
- * DELETE /api/elimination-rounds/:roundId
+ * DELETE /elimination-rounds/:roundId?event_id=X
  * Delete an elimination round and its qualifiers.
  */
 router.delete('/:roundId', (req, res, next) => {
   const { roundId } = req.params;
+  const { event_id } = req.query;
+
+  if (!event_id) {
+    return res.status(400).json({ error: 'event_id query parameter is required' });
+  }
 
   try {
     const db = getDb();
-    const round = db.prepare('SELECT id FROM elimination_rounds WHERE id = ?').get(roundId);
+    const round = db.prepare('SELECT * FROM elimination_rounds WHERE id = ?').get(roundId);
 
     if (!round) {
       return res.status(404).json({ error: 'Elimination round not found' });
+    }
+
+    // Verify round belongs to this event
+    if (round.event_id !== parseInt(event_id, 10)) {
+      return res.status(404).json({ error: 'Elimination round not found for this event' });
     }
 
     db.prepare('DELETE FROM round_qualifiers WHERE round_id = ?').run(roundId);
