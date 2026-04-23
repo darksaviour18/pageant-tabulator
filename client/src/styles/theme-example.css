@@ -1,0 +1,51 @@
+/* ============================================
+   COLOR CONFIGURATION GUIDE
+   
+   To create a custom color scheme, copy the :root section below
+   into a new file and import it in index.css BEFORE the main
+   :root definitions.
+   
+   Example file: client/src/styles/theme-example.css
+   
+   Copy that file, edit the values, then in index.css replace:
+     @import "tailwindcss";
+   With:
+     @import "tailwindcss";
+     @import "./styles/theme-example.css";
+   ============================================ */
+
+/* EXAMPLE: Copy to theme-example.css and customize
+:root {
+  --color-primary: #e8b4b8;
+  --color-primary-hover: #d9a3a7;
+  --color-primary-light: #f5d5d8;
+  
+  --color-secondary: #c4a5ca;
+  --color-secondary-hover: #b394bb;
+  --color-secondary-light: #e0d4eb;
+  
+  --color-cta: #d66d75;
+  --color-cta-hover: #c45b63;
+  
+  --color-bg: #ffffff;
+  --color-bg-subtle: #fafaf9;
+  --color-bg-elevated: #ffffff;
+  
+  --color-text: #18181b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #a1a1aa;
+  --color-text-inverse: #ffffff;
+  
+  --color-border: #e4e4e7;
+  --color-border-focus: #e8b4b8;
+  
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #0ea5e9;
+}
+[data-theme="dark"] {
+  --color-cta: #f472b6;
+  --color-cta-hover: #ec4899;
+}
+*/
