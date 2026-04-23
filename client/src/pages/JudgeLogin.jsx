@@ -221,16 +221,6 @@ export default function JudgeLogin() {
             </Button>
           </form>
         </div>
-
-        {/* Admin Link */}
-        <div className="text-center mt-6">
-          <a
-            href="/"
-            className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-cta)] transition-colors"
-          >
-            ← Back to Admin Dashboard
-          </a>
-        </div>
       </div>
     </div>
   );

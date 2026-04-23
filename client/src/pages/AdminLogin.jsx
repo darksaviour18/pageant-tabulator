@@ -98,16 +98,6 @@ export default function AdminLogin() {
             </button>
           </form>
         </div>
-
-        {/* Judge Portal Link */}
-        <div className="text-center mt-6">
-          <a
-            href="/judge/login"
-            className="text-sm text-slate-500 hover:text-amber-400 transition-colors"
-          >
-            ← Judge Scoring Portal
-          </a>
-        </div>
       </div>
     </div>
   );
