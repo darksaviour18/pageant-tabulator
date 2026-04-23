@@ -4,6 +4,7 @@ import { authAPI, eventsAPI, judgesAPI } from '../api';
 import { Crown, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Button from '../components/Button';
+import ThemeToggle from '../components/ThemeToggle';
 
 const JUDGE_SESSION_KEY = 'judge_session';
 
@@ -89,6 +90,11 @@ export default function JudgeLogin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center p-4">
+      {/* Theme Toggle in top-right corner */}
+      <div className="fixed top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
