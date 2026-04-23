@@ -286,7 +286,6 @@ function CriteriaList({ categoryId }) {
                 <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">#</th>
                 <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Criterion</th>
                 <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">%</th>
-                <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Range</th>
                 <th className="text-right py-2 px-3 text-[var(--color-text-muted)] font-medium">Actions</th>
               </tr>
             </thead>
@@ -296,9 +295,6 @@ function CriteriaList({ categoryId }) {
                   <td className="py-2 px-3 text-[var(--color-text-muted)] text-xs">{idx + 1}</td>
                   <td className="py-2 px-3 text-[var(--color-text)] font-medium">{c.name}</td>
                   <td className="py-2 px-3 text-[var(--color-text)]">{(c.weight * 100).toFixed(1)}%</td>
-                  <td className="py-2 px-3 text-[var(--color-text-muted)]">
-                    {c.min_score} – {c.max_score}
-                  </td>
                   <td className="py-2 px-3 text-right">
                     <button
                       onClick={() => handleDeleteCriterion(c.id)}
@@ -316,7 +312,7 @@ function CriteriaList({ categoryId }) {
       )}
 
       {/* Add Criterion Form */}
-      <form onSubmit={handleAddCriterion} className="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-3">
+      <form onSubmit={handleAddCriterion} className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
         <input
           type="text"
           value={newCriterion.name}
@@ -336,30 +332,10 @@ function CriteriaList({ categoryId }) {
           className="px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
           disabled={isComplete}
         />
-        <div className="flex gap-2">
-          <input
-            type="number"
-            step="0.1"
-            value={newCriterion.min_score}
-            onChange={(e) => setNewCriterion((prev) => ({ ...prev, min_score: parseFloat(e.target.value) || 0 }))}
-            placeholder="Min"
-            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
-            disabled={isComplete}
-          />
-          <input
-            type="number"
-            step="0.1"
-            value={newCriterion.max_score}
-            onChange={(e) => setNewCriterion((prev) => ({ ...prev, max_score: parseFloat(e.target.value) || 10 }))}
-            placeholder="Max"
-            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none text-sm bg-[var(--color-bg)] text-[var(--color-text)]"
-            disabled={isComplete}
-          />
-        </div>
         <button
           type="submit"
           disabled={isComplete}
-          className="flex items-center justify-center gap-1 px-3 py-2 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all active:scale-95"
+          className="flex items-center justify-center gap-1 px-3 py-2 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all active:scale-95"
         >
           <Plus className="w-3.5 h-3.5" />
           Add

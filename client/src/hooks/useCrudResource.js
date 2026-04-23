@@ -96,10 +96,7 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
       setSuccess(null);
       setLoading(true);
       try {
-        const res =
-          collectionKey !== null
-            ? await apiRef.current.delete(collectionKey, id)
-            : await apiRef.current.delete(id);
+        const res = await apiRef.current.delete(id);
         if (res?.status === 204 || res?.status === 200) {
           setItems((prev) => prev.filter((item) => item[deleteKey] !== id));
         } else {
@@ -113,7 +110,7 @@ export function useCrudResource(api, { collectionKey = null, deleteKey = 'id' } 
         setLoading(false);
       }
     },
-    [collectionKey, deleteKey, load]
+    [deleteKey, load]
   );
 
   return {

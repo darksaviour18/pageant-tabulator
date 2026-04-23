@@ -180,6 +180,13 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_audit_log_event ON audit_log(event_id, timestamp);
   `);
 
+  // 11.3.5: Migration: Add weight column to categories if not exists
+  try {
+    dbInstance.exec("ALTER TABLE categories ADD COLUMN weight REAL DEFAULT 1");
+  } catch (err) {
+    // Column may already exist (ignore error)
+  }
+
   return dbInstance;
 }
 
