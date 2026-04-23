@@ -1,10 +1,20 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const addToast = useCallback((toast) => {
     const id = Date.now();
@@ -30,6 +40,7 @@ export function ToastProvider({ children }) {
             key={toast.id} 
             {...toast} 
             onClose={() => removeToast(toast.id)} 
+            isDark={isDark}
           />
         ))}
       </div>
@@ -37,9 +48,7 @@ export function ToastProvider({ children }) {
   );
 }
 
-function Toast({ type = 'info', message, onClose }) {
-  const { isDark } = useContext(require('../context/ThemeContext').useTheme) || { isDark: false };
-  
+function Toast({ type = 'info', message, onClose, isDark }) {
   const icons = {
     success: <CheckCircle2 className="w-5 h-5 text-green-500" />,
     error: <AlertCircle className="w-5 h-5 text-red-500" />,

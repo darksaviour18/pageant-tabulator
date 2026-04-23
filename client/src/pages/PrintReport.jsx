@@ -3,7 +3,6 @@ import { eventsAPI, categoriesAPI } from '../api';
 import { reportsAPI, eliminationRoundsAPI } from '../api';
 import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw } from 'lucide-react';
 import EliminationRoundManager from '../components/EliminationRoundManager';
-import { useTheme } from '../context/ThemeContext';
 
 const REPORT_TYPES = [
   { id: 'category_detail', label: 'Category Detail (Per-Category Scores)' },
@@ -11,7 +10,6 @@ const REPORT_TYPES = [
 ];
 
 export default function PrintReport() {
-  const { isDark } = useTheme();
   const [report, setReport] = useState(null);
   const [reportType, setReportType] = useState('category_detail');
   const [events, setEvents] = useState([]);
@@ -346,7 +344,7 @@ export default function PrintReport() {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors ${
-              sidebarOpen ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+              sidebarOpen ? 'bg-[var(--color-warning)]/10 border-[var(--color-warning)]/30 text-[var(--color-warning)]' : 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--hover-bg)]'
             }`}
           >
             {sidebarOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}

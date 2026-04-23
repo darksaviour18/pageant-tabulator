@@ -3,7 +3,6 @@ import axios from 'axios';
 import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
 import { submissionsAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
-import { useTheme } from '../context/ThemeContext';
 import {
   Eye,
   Lock,
@@ -14,7 +13,6 @@ import {
 
 export default function AdminMonitor() {
   const { connected, lastSync, onEvent } = useSocket();
-  const { isDark } = useTheme();
   const [event, setEvent] = useState(null);
   const [judges, setJudges] = useState([]);
   const [categories, setCategories] = useState([]);

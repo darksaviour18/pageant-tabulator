@@ -3,10 +3,8 @@ import { eventsAPI } from '../api';
 import JudgesManager from '../components/JudgesManager';
 import ContestantsManager from '../components/ContestantsManager';
 import CategoriesManager from '../components/CategoriesManager';
-import { useTheme } from '../context/ThemeContext';
 
 export default function EventSetup() {
-  const { isDark } = useTheme();
   const [eventName, setEventName] = useState('');
   const [eventId, setEventId] = useState(null);
   const [status, setStatus] = useState('active');

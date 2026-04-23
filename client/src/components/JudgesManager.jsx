@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { judgesAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 
 export default function JudgesManager({ eventId }) {
-  const { isDark } = useTheme();
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
 

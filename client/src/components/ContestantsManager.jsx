@@ -2,10 +2,8 @@ import { useState, useMemo } from 'react';
 import { contestantsAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Trash2, Plus } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 
 export default function ContestantsManager({ eventId }) {
-  const { isDark } = useTheme();
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
 

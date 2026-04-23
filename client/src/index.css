@@ -44,6 +44,21 @@
   --color-error: #ef4444;
   --color-info: #0ea5e9;
   
+  /* --- Semantic Variables for Components --- */
+  --bg-primary: var(--color-bg);
+  --bg-secondary: var(--color-bg-subtle);
+  --bg-tertiary: var(--color-bg-elevated);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border-color: var(--color-border);
+  --border-hover: var(--color-primary);
+  --hover-bg: var(--color-bg-subtle);
+  --skeleton-color: #e4e4e7;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --color-accent: var(--color-cta);
+  
   /* --- Shadows --- */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -89,6 +104,21 @@
   /* Brighter CTAs in dark mode for contrast */
   --color-cta: #f472b6;
   --color-cta-hover: #ec4899;
+  
+  /* --- Semantic Variables for Components --- */
+  --bg-primary: var(--color-bg);
+  --bg-secondary: var(--color-bg-subtle);
+  --bg-tertiary: var(--color-bg-elevated);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border-color: var(--color-border);
+  --border-hover: var(--color-primary);
+  --hover-bg: var(--color-bg-elevated);
+  --skeleton-color: #3f3f46;
+  --glass-bg: rgba(24, 24, 27, 0.6);
+  --glass-border: rgba(63, 63, 70, 0.5);
+  --color-accent: var(--color-cta);
   
   /* Dark mode shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);

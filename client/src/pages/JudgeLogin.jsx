@@ -82,14 +82,14 @@ export default function JudgeLogin() {
 
   if (loadingEvents) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center">
-        <div className="text-zinc-400 text-lg">Loading...</div>
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <div className="text-[var(--color-text-muted)] text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
       {/* Theme Toggle in top-right corner */}
       <div className="fixed top-4 right-4">
         <ThemeToggle />
@@ -98,23 +98,23 @@ export default function JudgeLogin() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-rose-400/20 to-pink-500/20 mb-4 ring-1 ring-rose-400/30">
-            <Crown className="w-10 h-10 text-rose-400" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[var(--color-primary-light)] to-[var(--color-secondary-light)] mb-4 ring-1 ring-[var(--color-primary)]">
+            <Crown className="w-10 h-10 text-[var(--color-cta)]" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            Pageant Tabulator <span className="text-rose-400">Pro</span>
+          <h1 className="text-3xl font-bold text-[var(--color-text)] tracking-tight">
+            Pageant Tabulator <span className="text-[var(--color-cta)]">Pro</span>
           </h1>
-          <p className="text-zinc-400 mt-2 text-sm">Judge Scoring Portal</p>
+          <p className="text-[var(--color-text-muted)] mt-2 text-sm">Judge Scoring Portal</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-zinc-900/80 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 p-8 border border-zinc-800">
-          <h2 className="text-xl font-semibold text-zinc-100 mb-6">Judge Login</h2>
+        <div className="bg-[var(--color-bg-elevated)] backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-[var(--color-border)]">
+          <h2 className="text-xl font-semibold text-[var(--color-text)] mb-6">Judge Login</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Event Selection */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
                 Select Event
               </label>
               <select
@@ -136,9 +136,9 @@ export default function JudgeLogin() {
                     setLoadingJudges(false);
                   }
                 }}
-                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
-                  focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
-                  transition-all duration-200 touch-manipulation"
+                className="w-full px-4 py-3 min-h-[48px] bg-[var(--color-bg-subtle)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] 
+                  focus:ring-2 focus:ring-[var(--color-cta)]/50 focus:border-[var(--color-cta)] outline-none 
+                  transition-all duration-200"
                 disabled={events.length === 0}
               >
                 <option value="">Choose an event...</option>
@@ -149,7 +149,7 @@ export default function JudgeLogin() {
                 ))}
               </select>
               {events.length === 0 && (
-                <p className="text-xs text-zinc-500 mt-1.5">
+                <p className="text-xs text-[var(--color-text-muted)] mt-1.5">
                   No active events found. Contact your admin.
                 </p>
               )}
@@ -157,15 +157,15 @@ export default function JudgeLogin() {
 
             {/* Seat Number */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
                 Seat Number
               </label>
               <select
                 value={seatNumber}
                 onChange={(e) => setSeatNumber(e.target.value)}
-                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 
-                  focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
-                  transition-all duration-200 touch-manipulation disabled:opacity-50"
+                className="w-full px-4 py-3 min-h-[48px] bg-[var(--color-bg-subtle)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] 
+                  focus:ring-2 focus:ring-[var(--color-cta)]/50 focus:border-[var(--color-cta)] outline-none 
+                  transition-all duration-200 disabled:opacity-50"
                 disabled={!eventId || judges.length === 0 || loadingJudges}
               >
                 <option value="">Select your seat...</option>
@@ -183,7 +183,7 @@ export default function JudgeLogin() {
 
             {/* PIN */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
                 Enter PIN
               </label>
               <input
@@ -192,17 +192,17 @@ export default function JudgeLogin() {
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 placeholder="••••"
                 maxLength={4}
-                className="w-full px-4 py-3 min-h-[48px] bg-zinc-800 border border-zinc-700 rounded-lg 
-                  text-center text-2xl tracking-[0.5em] font-mono text-zinc-100 placeholder-zinc-600
-                  focus:ring-2 focus:ring-rose-400/50 focus:border-rose-400 outline-none 
-                  transition-all duration-200 touch-manipulation disabled:opacity-50"
+                className="w-full px-4 py-3 min-h-[48px] bg-[var(--color-bg-subtle)] border border-[var(--color-border)] rounded-lg 
+                  text-center text-2xl tracking-[0.5em] font-mono text-[var(--color-text)] placeholder-[var(--color-text-muted)]
+                  focus:ring-2 focus:ring-[var(--color-cta)]/50 focus:border-[var(--color-cta)] outline-none 
+                  transition-all duration-200 disabled:opacity-50"
                 disabled={!seatNumber}
               />
             </div>
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 px-4 py-3 rounded-lg border border-red-500/20">
+              <div className="flex items-center gap-2 text-sm text-[var(--color-error)] bg-[var(--color-error)]/10 px-4 py-3 rounded-lg border border-[var(--color-error)]/20">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -226,7 +226,7 @@ export default function JudgeLogin() {
         <div className="text-center mt-6">
           <a
             href="/"
-            className="text-sm text-zinc-500 hover:text-rose-400 transition-colors"
+            className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-cta)] transition-colors"
           >
             ← Back to Admin Dashboard
           </a>

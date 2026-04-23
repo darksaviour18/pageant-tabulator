@@ -1,15 +1,7 @@
-import { useTheme } from '../context/ThemeContext';
-
 export function Skeleton({ className = '', variant = 'text', width, height }) {
-  const { isDark } = useTheme();
-  
   const baseClasses = 'animate-pulse rounded';
   
-  const variantClasses = {
-    text: isDark ? 'bg-zinc-700' : 'bg-slate-200',
-    circular: isDark ? 'bg-zinc-700' : 'bg-slate-200',
-    rectangular: isDark ? 'bg-zinc-700' : 'bg-slate-200',
-  };
+  const variantClasses = 'bg-[var(--skeleton-color)]';
   
   const style = {
     width: width || (variant === 'circular' ? 'h-10 w-10' : 'w-full'),
@@ -18,7 +10,7 @@ export function Skeleton({ className = '', variant = 'text', width, height }) {
   
   return (
     <div 
-      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
+      className={`${baseClasses} ${variantClasses} ${className}`}
       style={style}
       aria-hidden="true"
     />
@@ -26,8 +18,6 @@ export function Skeleton({ className = '', variant = 'text', width, height }) {
 }
 
 export function SkeletonText({ lines = 3, className = '' }) {
-  const { isDark } = useTheme();
-  
   return (
     <div className={`space-y-2 ${className}`}>
       {Array.from({ length: lines }).map((_, i) => (
@@ -43,10 +33,8 @@ export function SkeletonText({ lines = 3, className = '' }) {
 }
 
 export function SkeletonCard() {
-  const { isDark } = useTheme();
-  
   return (
-    <div className={`rounded-xl border p-5 ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}`}>
+    <div className="rounded-xl border p-5 bg-[var(--bg-primary)] border-[var(--border-color)]">
       <div className="flex items-center gap-3 mb-4">
         <Skeleton variant="circular" width="w-10" height="h-10" />
         <div className="flex-1 space-y-2">
@@ -60,11 +48,9 @@ export function SkeletonCard() {
 }
 
 export function SkeletonTable({ rows = 5, cols = 4 }) {
-  const { isDark } = useTheme();
-  
   return (
-    <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}`}>
-      <div className={`grid gap-4 p-4 ${isDark ? 'bg-zinc-700/50 border-b border-zinc-700' : 'bg-slate-50 border-b border-slate-200'}`}>
+    <div className="rounded-xl border overflow-hidden bg-[var(--bg-primary)] border-[var(--border-color)]">
+      <div className={`grid gap-4 p-4 bg-[var(--bg-tertiary)] border-b border-[var(--border-color)]`}>
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} height="h-4" width={`${100 / cols}%`} />
         ))}
@@ -72,7 +58,7 @@ export function SkeletonTable({ rows = 5, cols = 4 }) {
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <div 
           key={rowIndex} 
-          className={`grid gap-4 p-4 border-t ${isDark ? 'border-zinc-700' : 'border-slate-200'}`}
+          className={`grid gap-4 p-4 border-t border-[var(--border-color)]`}
         >
           {Array.from({ length: cols }).map((_, i) => (
             <Skeleton key={i} height="h-8" />
@@ -84,10 +70,8 @@ export function SkeletonTable({ rows = 5, cols = 4 }) {
 }
 
 export function SkeletonButton({ className = '' }) {
-  const { isDark } = useTheme();
-  
   return (
-    <div className={`w-24 h-10 rounded-lg ${isDark ? 'bg-zinc-700' : 'bg-slate-200'} ${className}`} />
+    <div className={`w-24 h-10 rounded-lg bg-[var(--skeleton-color)] ${className}`} />
   );
 }
 

@@ -1,5 +1,3 @@
-import { useTheme } from '../context/ThemeContext';
-
 export default function Card({ 
   children, 
   className = '', 
@@ -7,25 +5,17 @@ export default function Card({
   padding = true,
   glass = false,
 }) {
-  const { isDark } = useTheme();
-
   const baseClasses = 'rounded-xl border transition-all duration-200';
   
   const glassClasses = glass 
-    ? isDark
-      ? 'bg-zinc-900/60 backdrop-blur-sm border-zinc-700/50 shadow-lg shadow-black/20'
-      : 'bg-white/70 backdrop-blur-sm border-white/50 shadow-lg shadow-black/5'
-    : isDark
-    ? 'bg-zinc-900 border-zinc-800'
-    : 'bg-white border-slate-200 shadow-sm';
+    ? 'bg-[var(--glass-bg)] backdrop-blur-sm border-[var(--glass-border)] shadow-lg'
+    : 'bg-[var(--bg-primary)] border-[var(--border-color)] shadow-sm';
 
   const hoverClasses = hover
-    ? isDark
-      ? 'hover:border-zinc-600 hover:shadow-xl hover:shadow-black/20 hover:-translate-y-0.5'
-      : 'hover:border-slate-300 hover:shadow-lg hover:-translate-y-0.5'
+    ? 'hover:border-[var(--border-hover)] hover:shadow-xl hover:-translate-y-0.5'
     : '';
 
-  const paddingClasses = padding ? (isDark ? 'p-6' : 'p-6') : '';
+  const paddingClasses = padding ? 'p-6' : '';
 
   return (
     <div className={`${baseClasses} ${glassClasses} ${hoverClasses} ${paddingClasses} ${className}`}>
@@ -43,18 +33,16 @@ export function CardHeader({ children, className = '' }) {
 }
 
 export function CardTitle({ children, className = '' }) {
-  const { isDark } = useTheme();
   return (
-    <h3 className={`text-lg font-semibold ${isDark ? 'text-zinc-100' : 'text-slate-900'} ${className}`}>
+    <h3 className={`text-lg font-semibold text-[var(--text-primary)] ${className}`}>
       {children}
     </h3>
   );
 }
 
 export function CardDescription({ children, className = '' }) {
-  const { isDark } = useTheme();
   return (
-    <p className={`text-sm mt-1 ${isDark ? 'text-zinc-400' : 'text-slate-500'} ${className}`}>
+    <p className={`text-sm mt-1 text-[var(--text-secondary)] ${className}`}>
       {children}
     </p>
   );
@@ -65,9 +53,8 @@ export function CardContent({ children, className = '' }) {
 }
 
 export function CardFooter({ children, className = '' }) {
-  const { isDark } = useTheme();
   return (
-    <div className={`mt-4 pt-4 border-t ${isDark ? 'border-zinc-800' : 'border-slate-200'} ${className}`}>
+    <div className={`mt-4 pt-4 border-t border-[var(--border-color)] ${className}`}>
       {children}
     </div>
   );

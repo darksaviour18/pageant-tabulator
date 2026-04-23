@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { categoriesAPI, criteriaAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 
 /** Maximum acceptable total weight (1.0 = 100%). */
 const MAX_WEIGHT = 1;
@@ -10,7 +9,6 @@ const MAX_WEIGHT = 1;
 const WEIGHT_TOLERANCE = 0.001;
 
 export default function CategoriesManager({ eventId }) {
-  const { isDark } = useTheme();
   const { items: categories, loading: catLoading, error: catError, handleCreate: createCategory, handleDelete: deleteCategory } = useCrudResource(
     categoriesAPI,
     { collectionKey: eventId }
@@ -57,7 +55,7 @@ export default function CategoriesManager({ eventId }) {
         <button
           type="submit"
           disabled={catLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Category
@@ -65,7 +63,7 @@ export default function CategoriesManager({ eventId }) {
       </form>
 
       {catError && (
-        <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg mb-4">
+        <div className="text-sm text-[var(--color-error)] bg-[var(--color-error)]/10 px-4 py-2 rounded-lg mb-4">
           {catError}
         </div>
       )}
