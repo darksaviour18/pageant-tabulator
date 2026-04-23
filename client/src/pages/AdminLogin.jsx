@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Shield, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Shield, AlertCircle } from 'lucide-react';
 
 const ADMIN_SESSION_KEY = 'admin_session';
 
@@ -24,6 +24,12 @@ export default function AdminLogin() {
   const [secret, setSecret] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (checkAdminSession()) {
+      navigate('/');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
