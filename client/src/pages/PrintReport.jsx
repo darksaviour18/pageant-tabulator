@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { eventsAPI, categoriesAPI } from '../api';
 import { reportsAPI, eliminationRoundsAPI } from '../api';
-import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw } from 'lucide-react';
+import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw, Download } from 'lucide-react';
 import EliminationRoundManager from '../components/EliminationRoundManager';
 
 const REPORT_TYPES = [
@@ -186,6 +186,22 @@ export default function PrintReport() {
     window.print();
   };
 
+  const handleExportCsv = async () => {
+    if (!selectedCategoryId || reportType !== 'category_detail') return;
+    try {
+      const res = await reportsAPI.getCsv(parseInt(eventId, 10), parseInt(selectedCategoryId, 10));
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${report?.category?.name || 'report'}_${eventId}.csv`.replace(/[^a-z0-9_]/gi, '_');
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Controls - hidden when printing */}
@@ -361,6 +377,15 @@ export default function PrintReport() {
                 <Printer className="w-4 h-4" />
                 Print
               </button>
+              {reportType === 'category_detail' && selectedCategoryId && (
+                <button
+                  onClick={handleExportCsv}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </button>
+              )}
             </>
           )}
 

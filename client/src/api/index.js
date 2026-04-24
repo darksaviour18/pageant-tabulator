@@ -73,6 +73,7 @@ export const submissionsAPI = {
 // --- Reports ---
 export const reportsAPI = {
   getReport: (eventId, categoryId) => api.get(`/reports/${eventId}/category/${categoryId}`),
+  getCsv: (eventId, categoryId) => api.get(`/reports/${eventId}/category/${categoryId}/csv`, { responseType: 'blob' }),
   getCrossCategoryReport: (eventId, data) => api.post(`/reports/${eventId}/cross-category`, data),
   saveReport: (data) => api.post('/reports/save', data),
   getSavedReports: (eventId) => api.get(`/reports/saved?event_id=${eventId}`),

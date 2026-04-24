@@ -171,3 +171,61 @@ router.get('/saved', (req, res, next) => {
 });
 
 export default router;
+
+/**
+ * GET /api/reports/:eventId/category/:categoryId/csv
+ * Download category report as CSV file.
+ */
+router.get('/:eventId/category/:categoryId/csv', (req, res, next) => {
+  const { eventId, categoryId } = req.params;
+
+  try {
+    const report = reportsService.generateCategoryReport(
+      parseInt(eventId, 10),
+      parseInt(categoryId, 10)
+    );
+
+    if (!report) {
+      return res.status(404).json({ error: 'Category not found for this event' });
+    }
+
+    const csv = reportToCsv(report, report.category?.name);
+    const filename = `${report.category?.name || 'report'}_${eventId}.csv`.replace(/[^a-z0-9_]/gi, '_');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+    return res.send(csv);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Helper: convert report data to CSV format.
+ */
+function reportToCsv(report, categoryName) {
+  if (!report || !report.scores || report.scores.length === 0) {
+    return '';
+  }
+
+  const lines = [];
+  const headers = ['Rank', 'Contestant', 'Number', ...report.criteria.map(c => c.name), 'Total'];
+  lines.push(headers.map(h => `"${h}"`).join(','));
+
+  for (const row of report.scores) {
+    const criteriaScores = report.criteria.map(c => {
+      const score = row.scores_by_criteria?.[c.id];
+      return score !== undefined ? score : '';
+    });
+    const line = [
+      row.rank || '',
+      `"${row.name}"`,
+      row.number,
+      ...criteriaScores,
+      row.total_score,
+    ];
+    lines.push(line.join(','));
+  }
+
+  return lines.join('\n');
+}
