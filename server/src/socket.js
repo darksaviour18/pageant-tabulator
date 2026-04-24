@@ -8,8 +8,10 @@
  */
 
 import { getDb } from './db/init.js';
+import jwt from 'jsonwebtoken';
 
 const HEARTBEAT_TIMEOUT_MS = 10000;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_SECRET || 'admin123';
 
 /**
  * Track connected judges: socketId → { judgeId, eventId, lastHeartbeat }
@@ -24,19 +26,24 @@ const connectedAdmins = new Map();
 /**
  * 10.1.6 + 11.4.2: Socket.io authentication middleware.
  * Validates that the client provides a valid session token on connection.
- * For admin connections, verifies the admin session token.
+ * For admin connections, verifies the admin JWT token.
  * For judge connections, requires authenticate event after connection.
  */
 function authMiddleware(socket, next) {
   const { token, role } = socket.handshake.auth;
 
   if (role === 'admin') {
-    // Admin must provide a valid session token matching ADMIN_SECRET
-    const adminSecret = process.env.ADMIN_SECRET || 'admin123';
-    if (!token || token !== adminSecret) {
+    if (!token) {
       return next(new Error('Admin authentication failed'));
     }
-    return next();
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.role !== 'admin') {
+        return next(new Error('Admin authentication failed'));
+      }
+    } catch {
+      return next(new Error('Admin authentication failed'));
+    }
   }
 
   // Judge connections: allow connection, will authenticate via 'authenticate' event

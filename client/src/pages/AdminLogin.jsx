@@ -18,6 +18,7 @@ export function checkAdminSession() {
 export function clearAdminSession() {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
   sessionStorage.removeItem('admin_secret');
+  axios.post('/api/auth/admin/logout');
 }
 
 export default function AdminLogin() {
@@ -46,7 +47,6 @@ export default function AdminLogin() {
       const res = await axios.post('/api/auth/admin', { secret: secret.trim() });
       if (res.data.success) {
         sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ authenticated: true }));
-        sessionStorage.setItem('admin_secret', secret.trim());
         navigate('/');
       }
     } catch (err) {

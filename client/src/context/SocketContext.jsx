@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { checkAdminSession } from '../pages/AdminLogin';
 
 const SocketContext = createContext(null);
 
@@ -21,7 +22,7 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     // Check if we're on an admin route and have admin session
     const isAdmin = window.location.pathname === '/' || window.location.pathname.startsWith('/');
-    const adminSecret = sessionStorage.getItem('admin_secret');
+    const hasAdminSession = checkAdminSession();
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -29,9 +30,10 @@ export function SocketProvider({ children }) {
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
       auth: {
-        role: isAdmin && adminSecret ? 'admin' : 'judge',
-        token: isAdmin && adminSecret ? adminSecret : undefined,
+        role: isAdmin && hasAdminSession ? 'admin' : 'judge',
+        // JWT is sent via httpOnly cookie, not need to include in auth
       },
+      withCredentials: true,
     });
 
     socketRef.current = socket;
