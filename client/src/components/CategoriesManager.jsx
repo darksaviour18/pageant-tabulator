@@ -38,6 +38,7 @@ export default function CategoriesManager({ eventId }) {
 
   const handleDeleteCategory = async (id, name) => {
     setConfirmDelete({
+      open: true,
       title: 'Delete Category',
       message: `Delete "${name}"? All criteria will also be removed. This cannot be undone.`,
       confirmLabel: 'Delete',
@@ -104,7 +105,9 @@ export default function CategoriesManager({ eventId }) {
               category={category}
               expanded={expandedId === category.id}
               onToggle={() => toggleExpand(category.id)}
-              onDelete={() => handleDeleteCategory(category.id, category.name)}
+              onDelete={() => {
+                handleDeleteCategory(category.id, category.name);
+              }}
             />
           ))}
         </div>

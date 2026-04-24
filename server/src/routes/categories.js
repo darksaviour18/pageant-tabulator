@@ -98,6 +98,7 @@ router.delete('/:categoryId', (req, res, next) => {
 
   try {
     const category = categoriesService.getById(parseInt(categoryId, 10));
+
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
     }
@@ -110,6 +111,7 @@ router.delete('/:categoryId', (req, res, next) => {
     categoriesService.delete(parseInt(categoryId, 10));
     return res.status(204).send();
   } catch (err) {
+    console.error(`[DELETE /categories] Error:`, err);
     next(err);
   }
 });
