@@ -1,6 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js-models';
+import { useState, useCallback, useRef } from 'react';
 
 export function useFaceDetection() {
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -14,12 +12,15 @@ export function useFaceDetection() {
     try {
       const faceApi = await import('face-api.js');
       faceApiRef.current = faceApi;
+
+      // Load models from bundled local files (offline/LAN compatible)
+      const modelPath = '/models';
+      await faceApi.nets.tinyFaceDetector.loadFromUri(modelPath);
       
-      await faceApi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
       setModelsLoaded(true);
       return true;
     } catch (err) {
-      console.warn('Failed to load face-api models:', err);
+      console.warn('Failed to load face detection models:', err);
       setError('Face detection unavailable');
       return false;
     }
@@ -40,7 +41,6 @@ export function useFaceDetection() {
         return null;
       }
 
-      // Return the first (most confident) detection
       return detections[0].box;
     } catch (err) {
       console.warn('Face detection error:', err);

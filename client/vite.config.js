@@ -35,9 +35,9 @@ export default defineConfig({
           },
         ],
       },
-      includeAssets: ['icon.svg', 'favicon.svg'],
+      includeAssets: ['icon.svg', 'favicon.svg', 'models/**'],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,json}'],
         navigateFallback: '/',
         runtimeCaching: [
           {
