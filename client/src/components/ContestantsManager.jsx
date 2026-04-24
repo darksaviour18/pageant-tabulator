@@ -1,8 +1,11 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { contestantsAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
-import { Trash2, Plus, Upload, Image, X } from 'lucide-react';
+import { useFaceDetection } from '../hooks/useFaceDetection';
+import { Trash2, Plus, Upload, Image, X, Crop } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 export default function ContestantsManager({ eventId }) {
   const [number, setNumber] = useState('');
@@ -10,7 +13,14 @@ export default function ContestantsManager({ eventId }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
   const [photoPreview, setPhotoPreview] = useState({});
+  const [cropModal, setCropModal] = useState(null);
+  const [cropSrc, setCropSrc] = useState(null);
+  const [cropState, setCropState] = useState(null);
   const fileInputRef = useRef({});
+  const imageRef = useRef(null);
+  
+  const { loadModels, detectFaceFromFile, modelsLoaded: modelsLoaded } = useFaceDetection();
+  const [loadingModels, setLoadingModels] = useState(false);
 
   const { items: contestants, loading, error, success, handleCreate, handleDelete, refresh } = useCrudResource(
     contestantsAPI,
@@ -54,6 +64,14 @@ export default function ContestantsManager({ eventId }) {
     });
   };
 
+  // Load models on first mount
+  useEffect(() => {
+    if (!modelsLoaded && !loadingModels) {
+      setLoadingModels(true);
+      loadModels().finally(() => setLoadingModels(false));
+    }
+  }, [loadModels, modelsLoaded, loadingModels]);
+
   const handlePhotoSelect = async (contestant) => {
     const input = fileInputRef.current[contestant.id];
     if (!input) return;
@@ -67,9 +85,25 @@ export default function ContestantsManager({ eventId }) {
     setUploadingId(contestant.id);
     
     try {
-      await contestantsAPI.uploadPhoto(eventId, contestant.id, file);
-      setPhotoPreview((prev) => ({ ...prev, [contestant.id]: URL.createObjectURL(file) }));
-      refresh();
+      // Try face detection if models are loaded
+      let faceBox = null;
+      if (modelsLoaded) {
+        faceBox = await detectFaceFromFile(file);
+      }
+
+      if (faceBox) {
+        // Face detected - use Sharp's centered crop from detected face
+        const formData = new FormData();
+        formData.append('photo', file);
+        await contestantsAPI.uploadPhoto(eventId, contestant.id, file);
+        setPhotoPreview((prev) => ({ ...prev, [contestant.id]: URL.createObjectURL(file) }));
+        refresh();
+      } else {
+        // No face detected or models not loaded - show manual crop modal
+        const previewUrl = URL.createObjectURL(file);
+        setCropSrc(previewUrl);
+        setCropModal({ contestant, file });
+      }
     } catch (err) {
       console.error('Failed to upload photo:', err);
     } finally {
@@ -77,6 +111,77 @@ export default function ContestantsManager({ eventId }) {
     }
     
     e.target.value = '';
+  };
+
+  const handleCropComplete = async () => {
+    if (!cropSrc || !cropState || !cropModal) return;
+
+    const { contestant, file } = cropModal;
+
+    // Create cropped image from crop state
+    const img = imageRef.current;
+    if (!img) return;
+
+    const scaleX = img.naturalWidth / cropState.width;
+    const scaleY = img.naturalHeight / cropState.height;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cropState.width;
+    canvas.height = cropState.height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(
+      img,
+      cropState.x * scaleX,
+      cropState.y * scaleY,
+      cropState.width * scaleX,
+      cropState.height * scaleY,
+      0,
+      0,
+      cropState.width,
+      cropState.height
+    );
+
+    // Convert to blob
+    const croppedFile = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/webp', 0.7);
+    });
+
+    setUploadingId(contestant.id);
+    
+    try {
+      await contestantsAPI.uploadPhoto(eventId, contestant.id, croppedFile);
+      setPhotoPreview((prev) => ({ ...prev, [contestant.id]: URL.createObjectURL(croppedFile) }));
+      refresh();
+      setCropModal(null);
+      setCropSrc(null);
+      setCropState(null);
+    } catch (err) {
+      console.error('Failed to upload cropped photo:', err);
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const handleSkipCrop = async () => {
+    if (!cropModal) return;
+    
+    const { contestant, file } = cropModal;
+    
+    setUploadingId(contestant.id);
+    
+    try {
+      await contestantsAPI.uploadPhoto(eventId, contestant.id, file);
+      setPhotoPreview((prev) => ({ ...prev, [contestant.id]: URL.createObjectURL(file) }));
+      refresh();
+      setCropModal(null);
+      setCropSrc(null);
+      setCropState(null);
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const getPhotoUrl = (contestantId) => {
@@ -88,6 +193,9 @@ export default function ContestantsManager({ eventId }) {
     <div className="bg-[var(--color-bg-subtle)] rounded-xl shadow-sm border border-[var(--color-border)] p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-[var(--color-text)]">Contestants</h2>
+        {loadingModels && (
+          <span className="text-xs text-[var(--color-text-muted)]">Loading face detection...</span>
+        )}
       </div>
 
       {/* Add Contestant Form */}
@@ -199,6 +307,58 @@ export default function ContestantsManager({ eventId }) {
         </div>
       )}
       <ConfirmDialog {...confirmDelete} />
+
+      {/* Manual Crop Modal */}
+      {cropModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-[var(--color-bg)] rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">Adjust Photo Position</h3>
+              <button onClick={() => { setCropModal(null); setCropSrc(null); }} className="text-[var(--color-text-muted)]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-[var(--color-text-muted)] mb-4">
+              Face not detected or position unclear. Drag to select the face area:
+            </p>
+
+            <div className="flex justify-center mb-4">
+              {cropSrc && (
+                <ReactCrop
+                  crop={cropState}
+                  onChange={(c) => setCropState(c)}
+                  aspect={1}
+                  circularCrop
+                >
+                  <img
+                    ref={imageRef}
+                    src={cropSrc}
+                    alt="Crop preview"
+                    className="max-h-64"
+                  />
+                </ReactCrop>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSkipCrop}
+                className="flex-1 px-4 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] hover:bg-[var(--color-bg-subtle)]"
+              >
+                Skip (use original)
+              </button>
+              <button
+                onClick={handleCropComplete}
+                disabled={!cropState}
+                className="flex-1 px-4 py-2 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 text-white rounded-lg"
+              >
+                Save Crop
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
