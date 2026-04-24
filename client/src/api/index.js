@@ -86,3 +86,14 @@ export const eliminationRoundsAPI = {
   getQualifiers: (roundId) => api.get(`/elimination-rounds/${roundId}/qualifiers`),
   delete: (eventId, roundId) => api.delete(`/elimination-rounds/${roundId}?event_id=${eventId}`),
 };
+
+// --- Audit Logs ---
+export const auditLogsAPI = {
+  getAll: (eventId, options = {}) => {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', options.limit);
+    if (options.offset) params.append('offset', options.offset);
+    if (options.action) params.append('action', options.action);
+    return api.get(`/audit-logs/${eventId}?${params.toString()}`);
+  },
+};

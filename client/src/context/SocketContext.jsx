@@ -82,7 +82,7 @@ export function SocketProvider({ children }) {
 
     return () => {
       if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
-      socket.disconnect();
+      socket.close();
     };
   }, []);
 

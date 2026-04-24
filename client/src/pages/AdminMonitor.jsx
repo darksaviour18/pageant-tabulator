@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
 import { submissionsAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import SyncStatus from '../components/SyncStatus';
 import {
   Eye,
   Lock,
@@ -197,14 +198,6 @@ export default function AdminMonitor() {
     }
   }, [event]);
 
-  const timeSinceSync = useMemo(() => {
-    if (!lastSync) return null;
-    const diff = Math.floor((Date.now() - lastSync) / 1000);
-    if (diff < 5) return 'just now';
-    if (diff < 60) return `${diff}s ago`;
-    return `${Math.floor(diff / 60)}m ago`;
-  }, [lastSync]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -227,12 +220,7 @@ export default function AdminMonitor() {
     <div className="space-y-6">
       {/* Connection Status */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-sm text-[var(--color-text-muted)]">
-            {connected ? `Connected · Last sync: ${timeSinceSync || '...'}` : 'Disconnected'}
-          </span>
-        </div>
+        <SyncStatus connected={connected} lastSync={lastSync} />
       </div>
 
       {/* Category Lock Toggles — 10.2.7 */}

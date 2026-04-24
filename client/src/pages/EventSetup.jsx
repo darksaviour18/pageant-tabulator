@@ -3,39 +3,31 @@ import { eventsAPI } from '../api';
 import JudgesManager from '../components/JudgesManager';
 import ContestantsManager from '../components/ContestantsManager';
 import CategoriesManager from '../components/CategoriesManager';
+import { useEvent } from '../context/EventContext';
 
 export default function EventSetup() {
+  const { selectedEventId, selectedEvent, setSelectedEventId, refreshEvents } = useEvent();
   const [eventName, setEventName] = useState('');
-  const [eventId, setEventId] = useState(null);
   const [status, setStatus] = useState('active');
   const [tabulators, setTabulators] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    loadEvent();
-  }, []);
-
-  const loadEvent = async () => {
-    try {
-      const res = await eventsAPI.getAll();
-      const activeEvent = res.data.find((e) => e.status === 'active');
-      if (activeEvent) {
-        setEventId(activeEvent.id);
-        setEventName(activeEvent.name);
-        setStatus(activeEvent.status);
-        setTabulators(activeEvent.tabulators ? JSON.parse(activeEvent.tabulators).map(t => t.name).join('\n') : '');
-        setIsEditing(true);
-      }
-    } catch (err) {
-      console.error('Failed to load events:', err);
-    } finally {
-      setLoading(false);
+    if (selectedEvent) {
+      setEventName(selectedEvent.name);
+      setStatus(selectedEvent.status);
+      setTabulators(selectedEvent.tabulators ? JSON.parse(selectedEvent.tabulators).map(t => t.name).join('\n') : '');
+      setIsEditing(true);
+    } else {
+      setEventName('');
+      setStatus('active');
+      setTabulators('');
+      setIsEditing(false);
     }
-  };
+  }, [selectedEvent]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,20 +48,22 @@ export default function EventSetup() {
         .filter(Boolean)
         .map(name => ({ name }));
 
-      if (isEditing && eventId) {
-        const res = await eventsAPI.update(eventId, { name: eventName, status, tabulators: tabulatorList });
-        setEventId(res.data.id);
+      if (isEditing && selectedEventId) {
+        const res = await eventsAPI.update(selectedEventId, { name: eventName, status, tabulators: tabulatorList });
+        setSelectedEventId(res.data.id);
         setEventName(res.data.name);
         setStatus(res.data.status);
         setSuccess('Event updated successfully');
+        refreshEvents();
       } else {
         const res = await eventsAPI.create(eventName);
-        setEventId(res.data.id);
+        setSelectedEventId(res.data.id);
         setStatus(res.data.status);
         setIsEditing(true);
         if (tabulatorList.length > 0) {
           await eventsAPI.update(res.data.id, { tabulators: tabulatorList });
         }
+        refreshEvents();
         setSuccess('Event created successfully');
       }
     } catch (err) {
@@ -79,10 +73,11 @@ export default function EventSetup() {
     }
   };
 
-  if (loading) {
+  if (!selectedEventId && !isEditing) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-[var(--color-text-muted)] text-lg">Loading...</div>
+      <div className="text-center py-20">
+        <p className="text-[var(--color-text-muted)] text-lg mb-4">No events found</p>
+        <p className="text-[var(--color-text-muted)] text-sm mb-6">Create your first event to get started</p>
       </div>
     );
   }
@@ -184,11 +179,11 @@ export default function EventSetup() {
       </div>
 
       {/* Managers (only shown when an event exists) */}
-      {eventId && (
+      {selectedEventId && (
         <>
-          <CategoriesManager eventId={eventId} />
-          <JudgesManager eventId={eventId} />
-          <ContestantsManager eventId={eventId} />
+          <CategoriesManager eventId={selectedEventId} />
+          <JudgesManager eventId={selectedEventId} />
+          <ContestantsManager eventId={selectedEventId} />
         </>
       )}
     </div>
