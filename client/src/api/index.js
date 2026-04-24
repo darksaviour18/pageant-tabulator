@@ -28,6 +28,15 @@ export const contestantsAPI = {
   getAll: (eventId) => api.get(`/events/${eventId}/contestants`),
   update: (id, data) => api.patch(`/contestants/${id}`, data),
   delete: (id) => api.delete(`/contestants/${id}`),
+  uploadPhoto: (eventId, contestantId, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    return api.post(`/events/${eventId}/contestants/${contestantId}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getPhoto: (eventId, contestantId) => 
+    api.get(`/events/${eventId}/contestants/${contestantId}/photo`, { responseType: 'blob' }),
 };
 
 // --- Categories ---

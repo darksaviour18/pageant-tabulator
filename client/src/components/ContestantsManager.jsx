@@ -1,15 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { contestantsAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Upload, Image, X } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function ContestantsManager({ eventId }) {
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [uploadingId, setUploadingId] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState({});
+  const fileInputRef = useRef({});
 
-  const { items: contestants, loading, error, success, handleCreate, handleDelete } = useCrudResource(
+  const { items: contestants, loading, error, success, handleCreate, handleDelete, refresh } = useCrudResource(
     contestantsAPI,
     { collectionKey: eventId }
   );
@@ -49,6 +52,36 @@ export default function ContestantsManager({ eventId }) {
       },
       onCancel: () => setConfirmDelete(null),
     });
+  };
+
+  const handlePhotoSelect = async (contestant) => {
+    const input = fileInputRef.current[contestant.id];
+    if (!input) return;
+    input.click();
+  };
+
+  const handlePhotoChange = async (e, contestant) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingId(contestant.id);
+    
+    try {
+      await contestantsAPI.uploadPhoto(eventId, contestant.id, file);
+      setPhotoPreview((prev) => ({ ...prev, [contestant.id]: URL.createObjectURL(file) }));
+      refresh();
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+    } finally {
+      setUploadingId(null);
+    }
+    
+    e.target.value = '';
+  };
+
+  const getPhotoUrl = (contestantId) => {
+    if (photoPreview[contestantId]) return photoPreview[contestantId];
+    return `/api/events/${eventId}/contestants/${contestantId}/photo`;
   };
 
   return (
@@ -102,6 +135,7 @@ export default function ContestantsManager({ eventId }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
+                <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">Photo</th>
                 <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">#</th>
                 <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">Name</th>
                 <th className="text-left py-3 px-4 text-[var(--color-text-muted)] font-medium">Status</th>
@@ -114,6 +148,30 @@ export default function ContestantsManager({ eventId }) {
                   key={c.id}
                   className="border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition"
                 >
+                  <td className="py-3 px-4">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-[var(--color-bg-subtle)] border border-[var(--color-border)]">
+                      {uploadingId === c.id ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-[var(--color-cta)] border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handlePhotoSelect(c)}
+                          className="w-full h-full flex items-center justify-center hover:bg-[var(--color-bg-subtle)] transition"
+                          title="Upload photo"
+                        >
+                          <Image className="w-5 h-5 text-[var(--color-text-muted)]" />
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      ref={(el) => (fileInputRef.current[c.id] = el)}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoChange(e, c)}
+                    />
+                  </td>
                   <td className="py-3 px-4 text-[var(--color-text)] font-medium">{c.number}</td>
                   <td className="py-3 px-4 text-[var(--color-text)]">{c.name}</td>
                   <td className="py-3 px-4">

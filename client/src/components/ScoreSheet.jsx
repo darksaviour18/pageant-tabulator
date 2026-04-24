@@ -7,7 +7,7 @@ import {
 import ScoreCell from './ScoreCell';
 import { useOfflineScores } from '../hooks/useOfflineScores';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react';
 import SubmitConfirmModal from './SubmitConfirmModal';
 import ConflictModal from './ConflictModal';
 import { useSocket } from '../context/SocketContext';
@@ -29,6 +29,9 @@ export default function ScoreSheet({
   const [syncing, setSyncing] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedContestant, setSelectedContestant] = useState(null);
+  const [contestantPhotos, setContestantPhotos] = useState({});
+  const [loadingPhotos, setLoadingPhotos] = useState(true);
 
   // Auto-save: write to IndexedDB immediately, debounce POST to server
   // Must come BEFORE useOfflineScores because refetchKey is used below
@@ -71,21 +74,67 @@ export default function ScoreSheet({
     onSubmit();
   }, [getPendingCount, syncNow, onSubmit]);
 
+  // Load contestant photos
+  useEffect(() => {
+    if (!eventId || !contestants?.length) return;
+    
+    const loadPhotos = async () => {
+      setLoadingPhotos(true);
+      const photos = {};
+      for (const c of contestants) {
+        try {
+          const res = await fetch(`/api/events/${eventId}/contestants/${c.id}/photo`);
+          if (res.ok) {
+            const blob = await res.blob();
+            photos[c.id] = URL.createObjectURL(blob);
+          }
+        } catch {
+          // No photo
+        }
+      }
+      setContestantPhotos(photos);
+      setLoadingPhotos(false);
+    };
+    
+    loadPhotos();
+    return () => {
+      Object.values(contestantPhotos).forEach(URL.revokeObjectURL);
+    };
+  }, [eventId, contestants]);
+
+  const handleContestantClick = (contestant) => {
+    if (contestantPhotos[contestant.id]) {
+      setSelectedContestant(contestant);
+    }
+  };
+
   // Build table columns
   const columns = useMemo(() => {
     const cols = [
       {
         id: 'contestant',
         header: 'Contestant',
-        size: 180,
+        size: 200,
         sticky: 'left',
         cell: ({ row }) => {
           const c = row.original;
+          const photoUrl = contestantPhotos[c.id];
           return (
-            <div className="flex items-center gap-3 px-3 py-2 min-h-[56px]">
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-bg-subtle)] text-sm font-bold text-[var(--color-text)]">
-                {c.number}
-              </span>
+            <div 
+              className={`flex items-center gap-3 px-3 py-2 min-h-[56px] cursor-pointer hover:bg-[var(--color-bg-subtle)] rounded-lg transition ${photoUrl ? 'cursor-zoom-in' : ''}`}
+              onClick={() => handleContestantClick(c)}
+            >
+              {photoUrl ? (
+                <img 
+                  src={photoUrl} 
+                  alt={c.name}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-[var(--color-border)]"
+                />
+              ) : (
+                <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[var(--color-bg-subtle)] text-sm font-bold text-[var(--color-text)]">
+                  {c.number}
+                </span>
+              )}
               <span className="text-sm font-medium text-[var(--color-text)]">{c.name}</span>
             </div>
           );
@@ -305,6 +354,31 @@ export default function ScoreSheet({
           onKeepLocal={() => resolveConflict('keep-local')}
           onDiscardLocal={() => resolveConflict('discard-local')}
         />
+      )}
+
+      {/* Full-screen Photo Preview Modal */}
+      {selectedContestant && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          onClick={() => setSelectedContestant(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors"
+            onClick={() => setSelectedContestant(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="text-center" onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={contestantPhotos[selectedContestant.id]}
+              alt={selectedContestant.name}
+              className="max-h-[70vh] max-w-[90vw] rounded-lg object-contain"
+            />
+            <p className="text-white text-lg font-medium mt-4">
+              #{selectedContestant.number} — {selectedContestant.name}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
