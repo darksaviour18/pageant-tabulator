@@ -195,14 +195,58 @@ CREATE INDEX idx_scores_judge ON scores(judge_id);
 CREATE INDEX idx_scores_contestant ON scores(contestant_id);
 CREATE INDEX idx_scores_category ON scores(category_id);
 CREATE INDEX idx_audit_log_event ON audit_log(event_id, timestamp);
+-- Composite index for judge+category lookups
+CREATE INDEX idx_scores_judge_category ON scores(judge_id, category_id);
+
+-- Saved Reports (v1.3)
+CREATE TABLE saved_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL,
+  report_type TEXT NOT NULL,
+  title TEXT,
+  categories TEXT, -- JSON array of category IDs
+  config TEXT, -- JSON with report settings
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);
+
+-- Elimination Rounds (v1.3)
+CREATE TABLE elimination_rounds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL,
+  round_name TEXT NOT NULL,
+  round_order INTEGER NOT NULL,
+  contestant_count INTEGER NOT NULL,
+  based_on_report_id INTEGER, -- FK to saved_reports.id (optional)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);
+
+-- Round Qualifiers (v1.3)
+CREATE TABLE round_qualifiers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  round_id INTEGER NOT NULL,
+  contestant_id INTEGER NOT NULL,
+  qualified_rank INTEGER NOT NULL,
+  FOREIGN KEY (round_id) REFERENCES elimination_rounds(id) ON DELETE CASCADE,
+  FOREIGN KEY (contestant_id) REFERENCES contestants(id) ON DELETE CASCADE,
+  UNIQUE(round_id, contestant_id)
+);
+
+-- Events (extended v1.4) - add tabulators column
+ALTER TABLE events ADD COLUMN tabulators TEXT; -- JSON array: [{name: "REYMOND ABELLA"}]
+
+-- Categories (extended v1.4) - add weight column
+ALTER TABLE categories ADD COLUMN weight REAL DEFAULT 1; -- for cross-category reports
 ```
 
 ### 3.2 Entity Relationships
-
 ```
 Event (1) ──┬── (N) Judges
             ├── (N) Contestants
-            └── (N) Categories (1) ─── (N) Criteria
+            ├── (N) Categories (1) ─── (N) Criteria
+            ├── (N) Saved Reports
+            └── (N) Elimination Rounds (1) ─── (N) Round Qualifiers
 
 Scores (N) ── (1) Judge
            ── (1) Contestant
@@ -461,7 +505,16 @@ CategorySubmissions (N) ── (1) Judge
 - **Forms:** React Hook Form
 - **Notifications:** React Hot Toast
 
-### 6.3 Development Tools
+### 6.4 Environment Variables
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 3000 | Server port |
+| `ADMIN_SECRET` | (required) | Admin login password |
+| `REPORT_CACHE_TTL_MS` | 300000 | Report cache TTL (5 min) |
+| `VITE_SOCKET_URL` | window.origin | Socket connection URL |
+| `VITE_API_URL` | /api | API base URL |
+
+### 6.5 Development Tools
 - **Linting:** ESLint + Prettier
 - **Testing:** Vitest (unit), Playwright (E2E)
 - **Version Control:** Git
@@ -588,6 +641,21 @@ Response: [{ id, event_id, report_type, report_title, configuration, created_at 
 
 DELETE /api/reports/saved/:id
 Response: 204 No Content
+
+#### Elimination Rounds
+```http
+POST /api/elimination-rounds
+Body: { event_id: number, round_name: string, round_order: number, contestant_count: number, based_on_report_id?: number }
+Response: { id, event_id, round_name, round_order, contestant_count, created_at }
+
+GET /api/elimination-rounds?event_id=:eventId
+Response: [{ id, event_id, round_name, round_order, contestant_count, created_at }]
+
+GET /api/elimination-rounds/:roundId/qualifiers
+Response: [{ id, round_id, contestant_id, qualified_rank, contestant: { id, number, name } }]
+
+DELETE /api/elimination-rounds/:roundId?event_id=:eventId
+Response: 204 No Content
 ```
 
 #### Scoring Context (Judge Portal)
@@ -600,13 +668,8 @@ Response: {
   categories: [{ id, name, display_order, is_locked, criteria: [{ id, name, weight, min_score, max_score, display_order }] }]
 }
 
-GET /api/scoring/:judgeId/event/:eventId/category/:categoryId
-Response: {
-  scores: [{ contestant_id, criteria_id, score, updated_at }],
-  submitted: boolean,
-  submittedAt: string|null,
-  unlockedByAdmin: boolean
-}
+GET /api/scores?judge_id=:judgeId&category_id=:categoryId
+Response: [{ id, judge_id, contestant_id, criteria_id, category_id, score, updated_at }]
 ```
 
 ---
@@ -618,6 +681,9 @@ Response: {
 ```javascript
 // Authentication
 socket.emit('authenticate', { role: 'judge' | 'admin', judgeId: number, eventId: number });
+
+// Reconnect (after disconnect)
+socket.emit('reconnect');
 
 // Heartbeat
 socket.emit('heartbeat');
@@ -842,6 +908,31 @@ Notes:
 - Yellow border = Unsaved changes
 - Empty cells highlighted until filled
 ```
+
+### 9.3 Component Library
+
+#### Reusable Components
+
+| Component | Props | Description |
+|-----------|-------|-------------|
+| `Button` | variant, size, loading, children | Primary/secondary/danger buttons |
+| `Input` | type, placeholder, value, onChange | Form inputs with theme support |
+| `Card` | children, className | Card wrapper with border/shadow |
+| `AnimatedTabs` | tabs, activeTab, onChange | Animated tab indicator |
+| `ThemeToggle` | - | Sun/moon dark/light toggle |
+| `Skeleton` | width, height | Loading skeleton |
+| `ConfirmDialog` | open, title, message, confirmLabel, cancelLabel, variant, onConfirm, onCancel | Reusable confirmation modal |
+| `ConflictModal` | open, localCount, serverCount, onUseServer, onKeepLocal | Conflict resolution modal |
+| `SortableTable` | data, columns, onSort, sortKey, sortDir | Sortable data table |
+
+#### Custom Hooks
+
+| Hook | Returns | Description |
+|------|---------|-------------|
+| `useAutoSave` | { save, isPending, flushQueue, resolveConflict, refetchKey } | Debounced auto-save |
+| `useOfflineScores` | { saveScore, getScores, isUnsaved, isSubmitted, getUnsynced } | IndexedDB scores |
+| `useCrudResource` | { items, loading, error, handleCreate, handleUpdate, handleDelete, refresh } | Generic CRUD |
+| `useHotkeys` | - | Keyboard shortcuts (J/K tabs, Cmd+S save) |
 
 ---
 
@@ -1606,6 +1697,8 @@ SQLite uses WAL (Write-Ahead Logging) mode for performance. On unexpected server
 | **Theme system** | Rose Gold + Mauve color palette with CSS variables for dark/light mode |
 | **Touch-first design** | 48px minimum touch targets, 56px score inputs for iPad/mobile |
 | **ConfirmDialog component** | Reusable confirmation modal with danger variant |
+| **ConflictModal component** | Shows local vs server score counts. Buttons: "Use Server Scores" / "Keep My Scores" |
+| **SubmitConfirmModal component** | Confirms category submission with warning |
 | **Loading states** | Added loading indicators to EventSetup, PrintReport components |
 | **Select All/Clear All** | Category selection helpers for multi-category reports |
 | **Category weight field** | Cross-category reports support weighted aggregation |
@@ -1614,6 +1707,13 @@ SQLite uses WAL (Write-Ahead Logging) mode for performance. On unexpected server
 | **Server-side validation** | Criteria weights must total 100% |
 | **Multi-event ownership** | DELETE endpoints verify event_id ownership |
 | **Delete fix** | Fixed ConfirmDialog not rendering - added `open` prop |
+| **SortableTable component** | Reusable sortable table with column sort, row click handlers |
+| **EliminationRoundManager** | Create/manage elimination rounds with QualifierSelector modal |
+| **Skeleton loading** | Loading skeleton component |
+| **Tabulators field** | Event tabulator names for report signatures |
+| **Live score preview** | Admin Monitor eye icon opens modal showing judge's draft scores |
+| **Keyboard shortcuts** | J/K to cycle tabs, Cmd+S to save in AdminDashboard |
+| **Report cache** | In-memory cache with configurable TTL, invalidation on score updates |
 
 ### E.7 API Updates (v1.5)
 | Endpoint | Change |
@@ -1622,6 +1722,39 @@ SQLite uses WAL (Write-Ahead Logging) mode for performance. On unexpected server
 | `DELETE /api/categories/:categoryId/criteria/:criterionId` | Added category_id ownership check |
 | `DELETE /api/events/:eventId/contestants/:id` | Added event_id ownership check |
 | `DELETE /api/events/:eventId/judges/:judgeId` | Already has event_id check |
+| `POST /api/elimination-rounds` | Create elimination round |
+| `GET /api/elimination-rounds?event_id=X` | List rounds for event |
+| `GET /api/elimination-rounds/:roundId/qualifiers` | Get qualifiers for round |
+| `DELETE /api/elimination-rounds/:roundId?event_id=X` | Delete round with event ownership check |
+| `GET /api/scores?judge_id=X&category_id=Y` | Get all scores for judge+category |
+| `POST /api/reports/:eventId/cross-category` | Rank aggregation with weights |
+| `POST /api/reports/save` | Save report configuration |
+| `GET /api/reports/saved?event_id=X` | List saved reports |
+| `DELETE /api/reports/saved/:id` | Delete saved report |
+
+### E.8 New Database Schema (v1.5)
+| Table/Column | Schema |
+|--------------|--------|
+| `categories.weight` | FLOAT DEFAULT 1 - weight for cross-category reports |
+| `events.tabulators` | JSON - array of tabulator names |
+| `saved_reports` | event_id, report_type, categories, title, config, created_at |
+| `elimination_rounds` | event_id, round_name, round_order, contestant_count, based_on_report_id |
+| `round_qualifiers` | round_id, contestant_id, qualified_rank |
+
+### E.9 New Client Hooks (v1.5)
+| Hook | Description |
+|------|-------------|
+| `useAutoSave` | Debounced auto-save with 250ms delay, batch POST, conflict detection |
+| `useOfflineScores` | IndexedDB scores management, isSubmitted tracking, merge server/local |
+| `useCrudResource` | Generic CRUD hook (getAll/create/update/delete) |
+| `useHotkeys` | Global keyboard shortcuts (J/K tabs, Cmd+S save) |
+
+### E.10 New WebSocket Events (v1.5)
+| Event | Direction | Description |
+|-------|----------|------------|
+| `reconnect` | Client→Server | Client reconnected after disconnect |
+| `connection_lost` | Server→Client | Heartbeat timeout detected |
+| `sheet_unlocked` | Server→Specific Judge | Admin unlocked their sheet |
 
 ---
 
