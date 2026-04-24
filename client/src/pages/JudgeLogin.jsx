@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI, eventsAPI, judgesAPI } from '../api';
 import { Crown, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import Button from '../components/Button';
 import ThemeToggle from '../components/ThemeToggle';
-
-const JUDGE_SESSION_KEY = 'judge_session';
 
 export default function JudgeLogin() {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState('');
+  const [eventName, setEventName] = useState('');
   const [judges, setJudges] = useState([]);
   const [loadingJudges, setLoadingJudges] = useState(false);
   const [seatNumber, setSeatNumber] = useState('');
@@ -96,15 +94,23 @@ export default function JudgeLogin() {
       </div>
 
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* Logo - Event name focus */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[var(--color-primary-light)] to-[var(--color-secondary-light)] mb-4 ring-1 ring-[var(--color-primary)]">
-            <Crown className="w-10 h-10 text-[var(--color-cta)]" />
-          </div>
-          <h1 className="text-3xl font-bold text-[var(--color-text)] tracking-tight">
-            Pageant Tabulator <span className="text-[var(--color-cta)]">Pro</span>
-          </h1>
-          <p className="text-[var(--color-text-muted)] mt-2 text-sm">Judge Scoring Portal</p>
+          {eventName ? (
+            <h1 className="text-3xl font-bold text-[var(--color-text)] tracking-tight mb-2">
+              {eventName}
+            </h1>
+          ) : (
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-primary-light)] to-[var(--color-secondary-light)] mb-4 ring-1 ring-[var(--color-primary)]">
+              <Crown className="w-6 h-6 text-[var(--color-cta)]" />
+            </div>
+          )}
+          <p className="text-[var(--color-text-muted)] text-sm">
+            Judge Portal
+          </p>
+          <p className="text-[var(--color-text-muted)] text-xs mt-1 opacity-50">
+            Pageant Tabulator
+          </p>
         </div>
 
         {/* Login Card */}
@@ -121,7 +127,9 @@ export default function JudgeLogin() {
                 value={eventId}
                 onChange={async (e) => {
                   const id = e.target.value;
+                  const selectedEvent = events.find(evt => evt.id === parseInt(id));
                   setEventId(id);
+                  setEventName(selectedEvent?.name || '');
                   setSeatNumber('');
                   setJudges([]);
                   if (!id) return;

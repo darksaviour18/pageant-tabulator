@@ -17,30 +17,42 @@ export default defineConfig({
         theme_color: '#0f172a',
         background_color: '#f8fafc',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         icons: [
           {
             src: '/icon.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
-            purpose: 'any',
+            purpose: 'any maskable',
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/icon.svg',
             sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
           },
         ],
       },
+      includeAssets: ['icon.svg', 'favicon.svg'],
       workbox: {
-        // Precache static assets only (no API caching yet)
-        globPatterns: ['**/*.{js,css,html,ico,svg,png}'],
-        navigateFallback: undefined,
-        runtimeCaching: [],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        navigateFallback: '/',
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              networkTimeoutSeconds: 10,
+            },
+          },
+        ],
       },
       devOptions: {
-        enabled: false, // Disable SW in dev to avoid caching during active development
+        enabled: false,
       },
     }),
   ],

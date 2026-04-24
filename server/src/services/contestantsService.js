@@ -77,4 +77,26 @@ export const contestantsService = {
     const db = getDb();
     db.prepare("UPDATE contestants SET status = 'withdrawn' WHERE id = ?").run(id);
   },
+
+  /**
+   * Update contestant photo.
+   * @param {number} id
+   * @param {Buffer} photoBuffer
+   */
+  updatePhoto(id, photoBuffer) {
+    const db = getDb();
+    db.prepare('UPDATE contestants SET photo = ? WHERE id = ?').run(photoBuffer, id);
+    return this.getById(id);
+  },
+
+  /**
+   * Get contestant photo.
+   * @param {number} id
+   * @returns {Buffer|null}
+   */
+  getPhoto(id) {
+    const db = getDb();
+    const contestant = db.prepare('SELECT photo FROM contestants WHERE id = ?').get(id);
+    return contestant?.photo || null;
+  },
 };

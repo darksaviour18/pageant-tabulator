@@ -1,12 +1,38 @@
 import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { contestantsService } from '../services/contestantsService.js';
+import sharp from 'sharp';
 
 const router = Router({ mergeParams: true });
 
 function getIo(req) {
   return req.app.get('io');
 }
+
+/**
+ * GET /api/events/:eventId/contestants/:id/photo
+ * Get contestant photo.
+ */
+router.get('/:eventId/contestants/:id/photo', (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const contestant = contestantsService.getById(parseInt(id, 10));
+    if (!contestant) {
+      return res.status(404).json({ error: 'Contestant not found' });
+    }
+
+    const photo = contestantsService.getPhoto(parseInt(id, 10));
+    if (!photo) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    res.set('Content-Type', 'image/webp');
+    return res.send(photo);
+  } catch (err) {
+    next(err);
+  }
+});
 
 /**
  * POST /api/events/:eventId/contestants
@@ -130,3 +156,38 @@ router.delete('/:id', (req, res, next) => {
 });
 
 export default router;
+
+/**
+ * POST /api/events/:eventId/contestants/:id/photo
+ * Upload and compress contestant photo.
+ */
+router.post('/:eventId/contestants/:id/photo', async (req, res, next) => {
+  const { id, eventId } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image file provided' });
+  }
+
+  try {
+    const contestant = contestantsService.getById(parseInt(id, 10));
+    if (!contestant) {
+      return res.status(404).json({ error: 'Contestant not found' });
+    }
+
+    if (contestant.event_id !== parseInt(eventId, 10)) {
+      return res.status(403).json({ error: 'Contestant does not belong to this event' });
+    }
+
+    // Compress and resize using Sharp
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize(800, 800, { fit: 'cover', position: 'center' })
+      .webp({ quality: 70 })
+      .toBuffer();
+
+    contestantsService.updatePhoto(parseInt(id, 10), compressedBuffer);
+
+    return res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});

@@ -187,6 +187,13 @@ export function initDatabase() {
     // Column may already exist (ignore error)
   }
 
+  // v1.6: Migration: Add photo column to contestants if not exists
+  try {
+    dbInstance.exec("ALTER TABLE contestants ADD COLUMN photo BLOB");
+  } catch (err) {
+    // Column may already exist (ignore error)
+  }
+
   return dbInstance;
 }
 

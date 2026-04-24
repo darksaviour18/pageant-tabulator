@@ -2,8 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import multer from 'multer';
 import dotenv from 'dotenv';
 import { initDatabase, closeDb } from './db/init.js';
+
+// Multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
 import eventsRouter from './routes/events.js';
 import judgesRouter from './routes/judges.js';
 import contestantsRouter from './routes/contestants.js';
@@ -97,7 +104,7 @@ app.get('/api/health', (_req, res) => {
 // --- API Routes ---
 app.use('/api/events', eventsRouter);
 app.use('/api/events/:eventId/judges', judgesRouter);
-app.use('/api/events/:eventId/contestants', contestantsRouter);
+app.use('/api/events/:eventId/contestants', upload.single('photo'), contestantsRouter);
 app.use('/api/events/:eventId/categories', categoriesRouter);
 app.use('/api/events/:eventId/categories/:categoryId/criteria', criteriaRouter);
 app.use('/api/categories/:categoryId/criteria', criteriaRouter);

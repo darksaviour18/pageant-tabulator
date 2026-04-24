@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Calendar, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { LogOut, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
 import { scoringAPI, submissionsAPI } from '../api';
 import ScoreSheet from '../components/ScoreSheet';
@@ -140,20 +140,23 @@ export default function JudgeDashboard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold text-[var(--color-text)]">
-              {session.judgeName} — {session.eventName}
+              {session.eventName}
             </h1>
             <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" title={`Last sync: ${timeSinceSync}`}>
               {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
               <span>{connected ? 'Connected' : 'Disconnected'}</span>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign Out
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--color-text-muted)] opacity-40">Pageant Tabulator</span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {loadingScores ? (
@@ -180,21 +183,22 @@ export default function JudgeDashboard() {
   const timeSinceSync = lastSync ? `${Math.max(1, Math.floor((Date.now() - lastSync) / 1000))}s ago` : 'never';
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header - Event focus */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text)]">
-            Welcome, {session.judgeName}
+            {session.eventName}
           </h1>
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mt-1">
-            <Calendar className="w-4 h-4" />
-            <span>{session.eventName}</span>
+            <span>Judge {session.judgeName}</span>
             <span className="text-[var(--color-text-muted)]/30">·</span>
             <span className="flex items-center gap-1.5" title={`Last sync: ${timeSinceSync}`}>
               {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
-              {connected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1 opacity-40">
+            Pageant Tabulator
+          </p>
         </div>
         <button
           onClick={handleLogout}
