@@ -9,7 +9,7 @@ const router = Router({ mergeParams: true });
  * POST /api/events/:eventId/judges
  * Add a new judge to an event.
  */
-router.post('/', verifyAdmin, async (req, res, next) => {
+router.post('/', verifyAdmin, (req, res, next) => {
   const { eventId } = req.params;
   const { seat_number, name, pin } = req.body;
 
@@ -33,7 +33,7 @@ router.post('/', verifyAdmin, async (req, res, next) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const judge = await judgesService.create(parseInt(eventId, 10), {
+    const judge = judgesService.create(parseInt(eventId, 10), {
       seat_number,
       name: name.trim(),
       pin,

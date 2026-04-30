@@ -9,7 +9,6 @@ export default function JudgesManager({ eventId }) {
   const [pin, setPin] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [visiblePins, setVisiblePins] = useState({});
-  const [lastCreatedPin, setLastCreatedPin] = useState(null);
 
   const { items: judges, loading, error, success, handleCreate, handleDelete } = useCrudResource(
     judgesAPI,
@@ -30,11 +29,8 @@ export default function JudgesManager({ eventId }) {
     });
 
     if (ok) {
-      setLastCreatedPin(pin);
       setName('');
       setPin('');
-      // Clear the "showing PIN" state after 5 seconds
-      setTimeout(() => setLastCreatedPin(null), 5000);
     }
   };
 
@@ -130,7 +126,7 @@ export default function JudgesManager({ eventId }) {
                   <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <span className="tracking-widest text-[var(--color-text-muted)]">
-                          {lastCreatedPin && judge.id === judges[judges.length - 1]?.id ? lastCreatedPin : '••••'}
+                          {visiblePins[judge.id] ? judge.pin : '••••'}
                         </span>
                         <button
                           onClick={() => togglePinVisibility(judge.id)}

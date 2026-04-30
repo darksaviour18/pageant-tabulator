@@ -59,7 +59,7 @@ export function initDatabase() {
       event_id INTEGER NOT NULL,
       seat_number INTEGER NOT NULL,
       name TEXT NOT NULL,
-      pin_hash TEXT NOT NULL,
+      pin TEXT NOT NULL,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
       UNIQUE(event_id, seat_number)
     );
