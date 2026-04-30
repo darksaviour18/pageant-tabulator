@@ -73,6 +73,16 @@ export default function ContestantsManager({ eventId }) {
     }
   }, [loadModels, modelsLoaded, loadingModels]);
 
+  // 15.5.2: Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      Object.values(photoPreview).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+    };
+  }, [photoPreview, cropSrc]);
+
   const handlePhotoSelect = async (contestant) => {
     const input = fileInputRef.current[contestant.id];
     if (!input) return;
