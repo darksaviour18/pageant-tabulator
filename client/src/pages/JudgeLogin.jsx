@@ -4,6 +4,7 @@ import { authAPI, eventsAPI, judgesAPI } from '../api';
 import { Crown, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
+import Button from '../components/Button';
 
 export default function JudgeLogin() {
   const navigate = useNavigate();
