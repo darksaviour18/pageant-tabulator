@@ -91,7 +91,7 @@ export default function ScoreCell({
           className={`w-full px-2 py-3 text-center text-sm rounded-md border-2 outline-none transition-all min-h-[56px]
             ${isReadOnly ? 'bg-[var(--color-bg-subtle)] border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}
             ${isError ? 'border-red-500 bg-red-500/10 animate-pulse' : ''}
-            ${isSyncing && !isError ? 'border-[var(--color-cta)] bg-[var(--color-cta)]/10 animate-pulse' : ''}
+            ${isSyncing && !isError ? 'border-amber-500 bg-amber-500/10 animate-pulse' : ''}
             ${isSaved && !isSyncing ? 'border-green-500/30 bg-green-500/10' : ''}
             ${!isSaved && !isSyncing && !isError ? 'border-[var(--color-border)] bg-[var(--color-bg-subtle)] focus:border-[var(--color-cta)]' : ''}
           `}
@@ -106,7 +106,7 @@ export default function ScoreCell({
               <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
             )}
             {isSyncing && (
-              <CircleDashed className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+              <CircleDashed className="w-3.5 h-3.5 text-yellow-500 animate-pulse" />
             )}
           </div>
         )}
