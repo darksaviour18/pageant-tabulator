@@ -146,7 +146,6 @@ export const reportsService = {
     });
 
     // Get total scores per contestant per category
-    const placeholders = categoryIds.map(() => '?').join(',');
     const categoryScores = db
       .prepare(
         `SELECT contestant_id, category_id, SUM(score) as total_score
