@@ -7,7 +7,7 @@ import {
 import ScoreCell from './ScoreCell';
 import { useOfflineScores } from '../hooks/useOfflineScores';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle2, Loader2, AlertCircle, X, UserRound } from 'lucide-react';
 import SubmitConfirmModal from './SubmitConfirmModal';
 import ConflictModal from './ConflictModal';
 import { useSocket } from '../context/SocketContext';
@@ -103,9 +103,7 @@ export default function ScoreSheet({
   }, [eventId, contestants]);
 
   const handleContestantClick = (contestant) => {
-    if (contestantPhotos[contestant.id]) {
-      setSelectedContestant(contestant);
-    }
+    setSelectedContestant(contestant);
   };
 
   // Build table columns
@@ -121,7 +119,7 @@ export default function ScoreSheet({
           const photoUrl = contestantPhotos[c.id];
           return (
             <div 
-              className={`flex items-center gap-3 px-3 py-2 min-h-[56px] cursor-pointer hover:bg-[var(--color-bg-subtle)] rounded-lg transition ${photoUrl ? 'cursor-zoom-in' : ''}`}
+              className="flex items-center gap-3 px-3 py-2 min-h-[56px] cursor-pointer hover:bg-[var(--color-bg-subtle)] rounded-lg transition cursor-zoom-in"
               onClick={() => handleContestantClick(c)}
             >
               {photoUrl ? (
@@ -131,9 +129,9 @@ export default function ScoreSheet({
                   className="w-10 h-10 rounded-full object-cover border-2 border-[var(--color-border)]"
                 />
               ) : (
-                <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[var(--color-bg-subtle)] text-sm font-bold text-[var(--color-text)]">
-                  {c.number}
-                </span>
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[var(--color-bg-subtle)] border-2 border-[var(--color-border)] text-[var(--color-text-muted)]">
+                  <UserRound className="w-5 h-5" />
+                </div>
               )}
               <span className="text-sm font-medium text-[var(--color-text)]">{c.name}</span>
             </div>

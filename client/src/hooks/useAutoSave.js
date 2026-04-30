@@ -59,6 +59,8 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
         }
         // Only clear the queue on success
         queueRef.current.clear();
+        // Bump refetchKey to trigger ScoreSheet to re-fetch local scores with updated synced state
+        setRefetchKey((k) => k + 1);
       }
     } catch (err) {
       console.warn('[useAutoSave] Batch sync failed, will retry on next change:', err);
