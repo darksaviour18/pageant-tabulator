@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { judgesAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Eye, EyeOff } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function JudgesManager({ eventId }) {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [visiblePins, setVisiblePins] = useState({});
+  const [lastCreatedPin, setLastCreatedPin] = useState(null);
 
   const { items: judges, loading, error, success, handleCreate, handleDelete } = useCrudResource(
     judgesAPI,
@@ -28,9 +30,19 @@ export default function JudgesManager({ eventId }) {
     });
 
     if (ok) {
+      setLastCreatedPin(pin);
       setName('');
       setPin('');
+      // Clear the "showing PIN" state after 5 seconds
+      setTimeout(() => setLastCreatedPin(null), 5000);
     }
+  };
+
+  const togglePinVisibility = (judgeId) => {
+    setVisiblePins(prev => ({
+      ...prev,
+      [judgeId]: !prev[judgeId]
+    }));
   };
 
   const handleRemove = async (judgeId, judgeName) => {
@@ -115,7 +127,20 @@ export default function JudgesManager({ eventId }) {
                     {judge.seat_number}
                   </td>
                   <td className="py-3 px-4 text-[var(--color-text)]">{judge.name}</td>
-                  <td className="py-3 px-4 text-[var(--color-text-muted)] tracking-widest">••••</td>
+                  <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="tracking-widest text-[var(--color-text-muted)]">
+                          {lastCreatedPin && judge.id === judges[judges.length - 1]?.id ? lastCreatedPin : '••••'}
+                        </span>
+                        <button
+                          onClick={() => togglePinVisibility(judge.id)}
+                          className="text-[var(--color-text-muted)] hover:text-[var(--color-cta)] p-1"
+                          title={visiblePins[judge.id] ? 'Hide PIN' : 'Show PIN'}
+                        >
+                          {visiblePins[judge.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </td>
                   <td className="py-3 px-4 text-right">
                     <button
                       onClick={() => handleRemove(judge.id, judge.name)}
