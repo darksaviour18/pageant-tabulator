@@ -9,6 +9,7 @@
 
 import { getDb } from './db/init.js';
 import jwt from 'jsonwebtoken';
+import cookie from 'cookie';
 
 const HEARTBEAT_TIMEOUT_MS = 10000;
 const JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_SECRET;
@@ -36,13 +37,21 @@ const connectedAdmins = new Map();
  */
 function authMiddleware(socket, next) {
   const { token, role } = socket.handshake.auth;
+  const cookieHeader = socket.handshake.headers.cookie;
+  let jwtToken = token;
+
+  // Try to get token from cookie if not provided in auth
+  if (!jwtToken && cookieHeader) {
+    const cookies = cookie.parse(cookieHeader);
+    jwtToken = cookies.admin_token;
+  }
 
   if (role === 'admin') {
-    if (!token) {
+    if (!jwtToken) {
       return next(new Error('Admin authentication failed'));
     }
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(jwtToken, JWT_SECRET);
       if (decoded.role !== 'admin') {
         return next(new Error('Admin authentication failed'));
       }
