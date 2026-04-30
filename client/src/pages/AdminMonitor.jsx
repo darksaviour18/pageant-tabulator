@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
 import { submissionsAPI } from '../api';
@@ -24,10 +24,18 @@ export default function AdminMonitor() {
   const [unlockMsg, setUnlockMsg] = useState(null);
   const [lockStatus, setLockStatus] = useState({});
   const [confirmDialog, setConfirmDialog] = useState(null); // { categoryId: isLocked }
+  const msgTimeoutRef = useRef(null);
 
   // 11.6.1: Live score preview state
   const [previewJudge, setPreviewJudge] = useState(null); // { judge, category, scores }
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Helper to set message with auto-clear and timeout cleanup
+  const showMessage = useCallback((msg) => {
+    if (msgTimeoutRef.current) clearTimeout(msgTimeoutRef.current);
+    setUnlockMsg(msg);
+    msgTimeoutRef.current = setTimeout(() => setUnlockMsg(null), 4000);
+  }, []);
 
   useEffect(() => {
     loadInitialData();
@@ -141,10 +149,11 @@ export default function AdminMonitor() {
             [key]: { ...(prev[key] || {}), submitted: false },
           }));
           setUnlockMsg(`Unlocked "${categoryName}" for ${judgeName}`);
-          setTimeout(() => setUnlockMsg(null), 4000);
+          showMessage(`Unlocked "${categoryName}" for ${judgeName}`);
         } catch (err) {
-          setUnlockMsg(err.response?.data?.error || 'Failed to unlock');
-          setTimeout(() => setUnlockMsg(null), 4000);
+          const errMsg = err.response?.data?.error || 'Failed to unlock';
+          setUnlockMsg(errMsg);
+          showMessage(errMsg);
         } finally {
           setUnlocking(null);
         }
@@ -167,11 +176,13 @@ export default function AdminMonitor() {
         try {
           const res = await categoriesAPI.update(cat.id, { is_locked: newLocked });
           setLockStatus((prev) => ({ ...prev, [cat.id]: res.data.is_locked }));
-          setUnlockMsg(`${cat.name} ${newLocked ? 'locked' : 'unlocked'} for all judges`);
-          setTimeout(() => setUnlockMsg(null), 4000);
+          const msg = `${cat.name} ${newLocked ? 'locked' : 'unlocked'} for all judges`;
+          setUnlockMsg(msg);
+          showMessage(msg);
         } catch (err) {
-          setUnlockMsg(err.response?.data?.error || `Failed to ${action.toLowerCase()} ${cat.name}`);
-          setTimeout(() => setUnlockMsg(null), 4000);
+          const errMsg = err.response?.data?.error || `Failed to ${action.toLowerCase()} ${cat.name}`;
+          setUnlockMsg(errMsg);
+          showMessage(errMsg);
         }
       },
       onCancel: () => setConfirmDialog(null),

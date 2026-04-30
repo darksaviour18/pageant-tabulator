@@ -4,6 +4,17 @@ const DEFAULT_CACHE_TTL_MS = parseInt(process.env.REPORT_CACHE_TTL_MS, 10) || 5 
 
 const reportCache = new Map();
 
+// 15.5.4: Periodic cleanup for expired cache entries
+const CACHE_CLEANUP_INTERVAL_MS = 60000; // Clean up every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of reportCache.entries()) {
+    if (now - entry.timestamp > entry.ttl) {
+      reportCache.delete(key);
+    }
+  }
+}, CACHE_CLEANUP_INTERVAL_MS);
+
 function getCacheKey(type, eventId, params) {
   if (type === 'category') {
     return `category:${eventId}:${params.categoryId}`;

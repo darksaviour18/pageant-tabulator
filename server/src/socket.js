@@ -30,6 +30,11 @@ const connectedJudges = new Map();
 const connectedAdmins = new Map();
 
 /**
+ * Heartbeat monitor interval reference for cleanup
+ */
+let heartbeatIntervalId = null;
+
+/**
  * 10.1.6 + 11.4.2: Socket.io authentication middleware.
  * Validates that the client provides a valid session token on connection.
  * For admin connections, verifies the admin JWT token.
@@ -243,7 +248,7 @@ export function setupSocketHandlers(io, app) {
   });
 
   // --- Heartbeat monitor: disconnect judges who stop sending heartbeats ---
-  setInterval(() => {
+  heartbeatIntervalId = setInterval(() => {
     const now = Date.now();
     for (const [socketId, conn] of connectedJudges.entries()) {
       if (now - conn.lastHeartbeat > HEARTBEAT_TIMEOUT_MS) {
@@ -254,6 +259,18 @@ export function setupSocketHandlers(io, app) {
       }
     }
   }, 5000);
+}
+
+/**
+ * Cleanup function for socket handlers - clears heartbeat interval
+ */
+export function cleanupSocketHandlers() {
+  if (heartbeatIntervalId) {
+    clearInterval(heartbeatIntervalId);
+    heartbeatIntervalId = null;
+  }
+  connectedJudges.clear();
+  connectedAdmins.clear();
 }
 
 /**

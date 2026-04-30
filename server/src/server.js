@@ -33,6 +33,17 @@ const authAttempts = new Map(); // key: "eventId:seatNumber" → { count, resetA
 const AUTH_MAX_ATTEMPTS = 5;
 const AUTH_WINDOW_MS = 30000;
 
+// 15.5.3: Periodic cleanup for expired auth attempts
+const AUTH_CLEANUP_INTERVAL_MS = 60000; // Clean up every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of authAttempts.entries()) {
+    if (now > entry.resetAt) {
+      authAttempts.delete(key);
+    }
+  }
+}, AUTH_CLEANUP_INTERVAL_MS);
+
 function checkAuthRateLimit(eventId, seatNumber) {
   const key = `${eventId}:${seatNumber}`;
   const now = Date.now();

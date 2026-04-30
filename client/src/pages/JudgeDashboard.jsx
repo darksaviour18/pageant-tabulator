@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
@@ -21,6 +21,7 @@ export default function JudgeDashboard() {
   const [categoryScores, setCategoryScores] = useState([]);
   const [loadingScores, setLoadingScores] = useState(false);
   const [categoryScoreCounts, setCategoryScoreCounts] = useState({}); // { categoryId: { scored, total } }
+  const unlockedTimeoutRef = useRef(null);
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -45,10 +46,16 @@ export default function JudgeDashboard() {
       if (selectedCategory?.id === data.categoryId) {
         setSelectedCategory((prev) => prev ? { ...prev, _unlocked: true } : null);
       }
-      // Auto-clear notification after 5s
-      setTimeout(() => setUnlockedCategory(null), 5000);
+      // Auto-clear notification after 5s (clean up previous timeout)
+      if (unlockedTimeoutRef.current) clearTimeout(unlockedTimeoutRef.current);
+      unlockedTimeoutRef.current = setTimeout(() => setUnlockedCategory(null), 5000);
     });
-    return unsub;
+
+    // Cleanup timeout on unmount
+    return () => {
+      unsub();
+      if (unlockedTimeoutRef.current) clearTimeout(unlockedTimeoutRef.current);
+    };
   }, [onEvent, selectedCategory]);
 
   const loadScoringContext = async (judgeId, eventId) => {
