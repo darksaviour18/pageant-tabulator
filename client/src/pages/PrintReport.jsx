@@ -595,8 +595,8 @@ function CategoryDetailReport({ report, event, signatureType, customTitle }) {
             <div className="grid grid-cols-2 gap-8">
               {(event?.tabulators ? JSON.parse(event.tabulators) : [])
                 .filter(t => t.name)
-                .map((t, i) => (
-                  <div key={i}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{t.name}</p></div>
+                .map((t) => (
+                  <div key={t.name}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{t.name}</p></div>
                 ))}
             </div>
           </div>
@@ -692,8 +692,8 @@ function CrossCategoryReport({ report, event, signatureType, customTitle }) {
             <div className="grid grid-cols-2 gap-8">
               {(event?.tabulators ? JSON.parse(event.tabulators) : [])
                 .filter(t => t.name)
-                .map((t, i) => (
-                  <div key={i}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{t.name}</p></div>
+                .map((t) => (
+                  <div key={t.name}><div className="border-b border-slate-400 pb-1 mb-1">&nbsp;</div><p className="text-xs text-slate-500 text-center">{t.name}</p></div>
                 ))}
             </div>
           </div>
