@@ -155,13 +155,11 @@ router.delete('/:id', (req, res, next) => {
   }
 });
 
-export default router;
-
 /**
  * POST /api/events/:eventId/contestants/:id/photo
  * Upload and compress contestant photo.
  */
-router.post('/:eventId/contestants/:id/photo', async (req, res, next) => {
+router.post('/:id/photo', async (req, res, next) => {
   const { id, eventId } = req.params;
 
   if (!req.file) {
@@ -191,3 +189,5 @@ router.post('/:eventId/contestants/:id/photo', async (req, res, next) => {
     next(err);
   }
 });
+
+export default router;
