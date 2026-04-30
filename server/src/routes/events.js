@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router();
 
@@ -7,7 +8,7 @@ const router = Router();
  * POST /api/events
  * Create a new event.
  */
-router.post('/', (req, res, next) => {
+router.post('/', verifyAdmin, (req, res, next) => {
   const { name } = req.body;
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -57,7 +58,7 @@ router.get('/:id', (req, res, next) => {
  * PATCH /api/events/:id
  * Update event name or status.
  */
-router.patch('/:id', (req, res, next) => {
+router.patch('/:id', verifyAdmin, (req, res, next) => {
   const { id } = req.params;
   const { name, status, tabulators } = req.body;
 

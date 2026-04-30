@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { categoriesService } from '../services/categoriesService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router({ mergeParams: true });
 
@@ -12,7 +13,7 @@ function getIo(req) {
  * POST /api/events/:eventId/categories
  * Create a new category for an event.
  */
-router.post('/', (req, res, next) => {
+router.post('/', verifyAdmin, (req, res, next) => {
   const { eventId } = req.params;
   const { name, display_order, weight } = req.body;
 
@@ -57,7 +58,7 @@ router.get('/', (req, res, next) => {
  * PATCH /api/categories/:categoryId
  * Update a category.
  */
-router.patch('/:categoryId', async (req, res, next) => {
+router.patch('/:categoryId', verifyAdmin, async (req, res, next) => {
   const { categoryId } = req.params;
   const { name, display_order, is_locked, weight } = req.body;
 
@@ -93,7 +94,7 @@ router.patch('/:categoryId', async (req, res, next) => {
  * DELETE /api/events/:eventId/categories/:categoryId
  * Delete a category (cascades to criteria).
  */
-router.delete('/:categoryId', (req, res, next) => {
+router.delete('/:categoryId', verifyAdmin, (req, res, next) => {
   const { eventId, categoryId } = req.params;
 
   try {

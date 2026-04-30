@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { categoriesService } from '../services/categoriesService.js';
 import { criteriaService } from '../services/criteriaService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router({ mergeParams: true });
 
@@ -8,7 +9,7 @@ const router = Router({ mergeParams: true });
  * POST /api/categories/:categoryId/criteria
  * Create a new criterion for a category.
  */
-router.post('/', (req, res, next) => {
+router.post('/', verifyAdmin, (req, res, next) => {
   const { categoryId } = req.params;
   const { name, weight, min_score, max_score, display_order } = req.body;
 
@@ -65,7 +66,7 @@ router.get('/', (req, res, next) => {
  * DELETE /api/categories/:categoryId/criteria/:criterionId
  * Delete a criterion.
  */
-router.delete('/:criterionId', (req, res, next) => {
+router.delete('/:criterionId', verifyAdmin, (req, res, next) => {
   const { categoryId, criterionId } = req.params;
 
   try {

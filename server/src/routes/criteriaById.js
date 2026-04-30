@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { criteriaService } from '../services/criteriaService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router();
 
@@ -7,7 +8,7 @@ const router = Router();
  * PATCH /api/criteria/:criterionId
  * Update a criterion.
  */
-router.patch('/:criterionId', (req, res, next) => {
+router.patch('/:criterionId', verifyAdmin, (req, res, next) => {
   const { criterionId } = req.params;
   const { name, weight, min_score, max_score, display_order } = req.body;
 

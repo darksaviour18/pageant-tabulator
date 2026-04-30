@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db/init.js';
 import { writeAuditLog } from '../services/auditService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.post('/', (req, res, next) => {
  * POST /api/submissions/unlock
  * Admin unlocks a judge's category sheet for re-editing.
  */
-router.post('/unlock', async (req, res, next) => {
+router.post('/unlock', verifyAdmin, async (req, res, next) => {
   const { judge_id, category_id } = req.body;
 
   if (!judge_id || !category_id) {

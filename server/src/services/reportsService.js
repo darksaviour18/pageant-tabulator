@@ -123,11 +123,12 @@ export const reportsService = {
     if (!categoryIds || categoryIds.length === 0) return null;
 
     // Verify all categories belong to this event
+    const placeholders = categoryIds.map(() => '?').join(',');
     const categories = db
       .prepare(
-        `SELECT id, name, weight, display_order FROM categories WHERE id IN (${categoryIds.join(',')}) AND event_id = ? ORDER BY display_order`
+        `SELECT id, name, weight, display_order FROM categories WHERE id IN (${placeholders}) AND event_id = ? ORDER BY display_order`
       )
-      .all(eventId);
+      .all(...categoryIds, eventId);
 
     if (categories.length !== categoryIds.length) return null;
 
@@ -144,17 +145,16 @@ export const reportsService = {
       categoryWeightMap[cat.id] = cat.weight || 1;
     });
 
-    const catIdList = categoryIds.join(',');
-
     // Get total scores per contestant per category
+    const placeholders = categoryIds.map(() => '?').join(',');
     const categoryScores = db
       .prepare(
         `SELECT contestant_id, category_id, SUM(score) as total_score
          FROM scores
-         WHERE category_id IN (${catIdList})
+         WHERE category_id IN (${placeholders})
          GROUP BY contestant_id, category_id`
       )
-      .all();
+      .all(...categoryIds);
 
     // Calculate weighted scores per contestant
     const contestantWeightedScores = {};

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { judgesService } from '../services/judgesService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router({ mergeParams: true });
 
@@ -8,7 +9,7 @@ const router = Router({ mergeParams: true });
  * POST /api/events/:eventId/judges
  * Add a new judge to an event.
  */
-router.post('/', async (req, res, next) => {
+router.post('/', verifyAdmin, async (req, res, next) => {
   const { eventId } = req.params;
   const { seat_number, name, pin } = req.body;
 
@@ -65,7 +66,7 @@ router.get('/', (req, res, next) => {
  * DELETE /api/events/:eventId/judges/:judgeId
  * Delete a judge from an event.
  */
-router.delete('/:judgeId', (req, res, next) => {
+router.delete('/:judgeId', verifyAdmin, (req, res, next) => {
   const { eventId, judgeId } = req.params;
 
   try {

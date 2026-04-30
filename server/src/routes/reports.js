@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { reportsService, invalidateReportCache } from '../services/reportsService.js';
 import { getDb } from '../db/init.js';
 import { writeAuditLog } from '../services/auditService.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router({ mergeParams: true });
 
@@ -75,7 +76,7 @@ router.post('/:eventId/cross-category', (req, res, next) => {
  * POST /api/reports/save
  * Save a report configuration for later reference.
  */
-router.post('/save', (req, res, next) => {
+router.post('/save', verifyAdmin, (req, res, next) => {
   const { event_id, report_type, report_title, configuration } = req.body;
 
   if (!event_id || !report_type || !report_title) {
@@ -111,7 +112,7 @@ router.post('/save', (req, res, next) => {
  * DELETE /api/reports/saved/:id?event_id=X
  * Delete a saved report configuration.
  */
-router.delete('/saved/:id', (req, res, next) => {
+router.delete('/saved/:id', verifyAdmin, (req, res, next) => {
   const { id } = req.params;
   const { event_id } = req.query;
 
