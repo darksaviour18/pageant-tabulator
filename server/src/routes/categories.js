@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { categoriesService } from '../services/categoriesService.js';
 import { verifyAdmin } from './adminAuth.js';
+import { broadcastCategoryLock } from '../socket.js';
 
 const router = Router({ mergeParams: true });
 
@@ -79,7 +80,6 @@ router.patch('/:categoryId', verifyAdmin, async (req, res, next) => {
     if (is_locked !== undefined) {
       const io = getIo(req);
       if (io) {
-        const { broadcastCategoryLock } = await import('../socket.js');
         broadcastCategoryLock(io, updated.id, !!is_locked);
       }
     }

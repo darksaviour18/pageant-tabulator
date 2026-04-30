@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db/init.js';
 import { writeAuditLog } from '../services/auditService.js';
 import { verifyAdmin } from './adminAuth.js';
+import { notifySheetUnlocked } from '../socket.js';
 
 const router = Router();
 
@@ -84,7 +85,6 @@ router.post('/unlock', verifyAdmin, async (req, res, next) => {
     const io = getIo(req);
     if (io) {
       // Find the judge's socket and notify
-      const { notifySheetUnlocked } = await import('../socket.js');
       notifySheetUnlocked(io, judge_id, category_id);
     }
 

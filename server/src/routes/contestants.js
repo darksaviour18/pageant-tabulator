@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { contestantsService } from '../services/contestantsService.js';
 import { verifyAdmin } from './adminAuth.js';
+import { broadcastContestantAdded } from '../socket.js';
 import sharp from 'sharp';
 
 const router = Router({ mergeParams: true });
@@ -76,7 +77,6 @@ router.post('/', async (req, res, next) => {
     // 10.3.5: Broadcast contestant added
     const io = getIo(req);
     if (io) {
-      const { broadcastContestantAdded } = await import('../socket.js');
       broadcastContestantAdded(io, contestant);
     }
 
