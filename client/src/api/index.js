@@ -27,8 +27,8 @@ export const judgesAPI = {
 export const contestantsAPI = {
   create: (eventId, data) => api.post(`/events/${eventId}/contestants`, data),
   getAll: (eventId) => api.get(`/events/${eventId}/contestants`),
-  update: (id, data) => api.patch(`/contestants/${id}`, data),
-  delete: (id) => api.delete(`/contestants/${id}`),
+  update: (eventId, id, data) => api.patch(`/events/${eventId}/contestants/${id}`, data),
+  delete: (eventId, id) => api.delete(`/events/${eventId}/contestants/${id}`),
   uploadPhoto: (eventId, contestantId, file) => {
     const formData = new FormData();
     formData.append('photo', file);
