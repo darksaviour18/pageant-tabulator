@@ -6,6 +6,8 @@ import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/Button';
 
+const JUDGE_SESSION_KEY = 'judge_session';
+
 export default function JudgeLogin() {
   const navigate = useNavigate();
   const { isDark } = useTheme();
