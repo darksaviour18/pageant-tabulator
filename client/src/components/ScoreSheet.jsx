@@ -122,6 +122,7 @@ export default function ScoreSheet({
               className="flex items-center gap-3 px-3 py-2 min-h-[56px] cursor-pointer hover:bg-[var(--color-bg-subtle)] rounded-lg transition cursor-zoom-in"
               onClick={() => handleContestantClick(c)}
             >
+              <span className="w-8 text-center text-sm font-bold text-[var(--color-text)]">{c.number}</span>
               {photoUrl ? (
                 <img 
                   src={photoUrl} 
@@ -129,7 +130,7 @@ export default function ScoreSheet({
                   className="w-10 h-10 rounded-full object-cover border-2 border-[var(--color-border)]"
                 />
               ) : (
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[var(--color-bg-subtle)] border-2 border-[var(--color-border)] text-[var(--color-text-muted)]">
+                <div className="w-10 h-10 rounded-full bg-[var(--color-bg-subtle)] border-2 border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)]">
                   <UserRound className="w-5 h-5" />
                 </div>
               )}
