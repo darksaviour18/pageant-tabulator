@@ -35,7 +35,7 @@ export default function ScoreSheet({
 
   // Auto-save: write to IndexedDB immediately, debounce POST to server
   // Must come BEFORE useOfflineScores because refetchKey is used below
-  const { saveAndSync, syncNow, getPendingCount, conflict, resolveConflict, refetchKey } = useAutoSave({
+  const { saveAndSync, syncNow, getPendingCount, isSyncing, conflict, resolveConflict, refetchKey } = useAutoSave({
     judgeId,
     eventId,
     categoryId: category.id,
@@ -156,8 +156,9 @@ export default function ScoreSheet({
         cell: ({ row }) => {
           const contestant = row.original;
           const value = getScore(contestant.id, crit.id);
+          const syncing = isSyncing(contestant.id, crit.id);
           const unsaved = isUnsaved(contestant.id, crit.id);
-          const saved = value !== null && !unsaved;
+          const saved = value !== null && !unsaved && !syncing;
 
           return (
             <ScoreCell
@@ -165,7 +166,7 @@ export default function ScoreSheet({
               minScore={crit.min_score}
               maxScore={crit.max_score}
               isSaved={saved}
-              isUnsaved={unsaved}
+              isSyncing={syncing}
               isReadOnly={effectiveReadOnly}
               onChange={(score) => handleScoreChange(contestant.id, crit.id, score)}
               rowIndex={row.index}

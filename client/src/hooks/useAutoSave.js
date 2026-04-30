@@ -219,6 +219,9 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
     saveAndSync,
     syncNow,
     getPendingCount: () => queueRef.current.size,
+    isSyncing: (contestantId, criteriaId) => {
+      return queueRef.current.has(`${contestantId}:${criteriaId}`) || syncingRef.current;
+    },
     conflict,
     resolveConflict,
     refetchKey,
