@@ -98,14 +98,14 @@ function broadcastJudgeProgress(io, judgeId, eventId, categoryId) {
 }
 
 /**
- * Broadcast a live score update to all admin clients.
+ * Broadcast a live score update to all admin clients (snake_case per SPEC.md §8).
  */
 function broadcastScoreUpdate(io, judgeId, contestantId, criteriaId, categoryId, score) {
   io.to('admins').emit('score_updated', {
-    judgeId,
-    contestantId,
-    criteriaId,
-    categoryId,
+    judge_id: judgeId,
+    contestant_id: contestantId,
+    criteria_id: criteriaId,
+    category_id: categoryId,
     score,
   });
 }
