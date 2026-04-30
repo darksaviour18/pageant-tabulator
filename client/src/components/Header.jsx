@@ -6,13 +6,13 @@ import { useTheme } from '../context/ThemeContext';
 import { useEvent } from '../context/EventContext';
 
 export default function Header() {
-  const handleLogout = () => {
-    clearAdminSession();
-    window.location.href = '/admin/login';
-  };
-
   const { isDark } = useTheme();
-  const { events, selectedEvent, setSelectedEventId } = useEvent();
+  const eventContext = useEvent();
+  
+  // Safety check - if not in EventProvider, return null
+  if (!eventContext) return null;
+  
+  const { events, selectedEvent, setSelectedEventId } = eventContext;
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
