@@ -21,7 +21,7 @@ export function useHotkeys(handlers, deps = []) {
         break;
       }
     }
-  }, [handlers]);
+  }, [handlers, ...deps]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

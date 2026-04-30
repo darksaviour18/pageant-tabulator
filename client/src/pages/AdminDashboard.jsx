@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import EventSetup from './EventSetup';
 import AdminMonitor from './AdminMonitor';
 import PrintReport from './PrintReport';
@@ -17,24 +17,24 @@ const TABS = [
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('setup');
 
-  const handlers = {
-    'j+mod': () => cycleTab(1),
-    'k+mod': () => cycleTab(-1),
-    's+mod': () => save(),
-  };
-
-  function cycleTab(direction) {
+  const cycleTab = useCallback((direction) => {
     const currentIndex = TABS.findIndex(t => t.id === activeTab);
     const nextIndex = (currentIndex + direction + TABS.length) % TABS.length;
     setActiveTab(TABS[nextIndex].id);
-  }
+  }, [activeTab]);
 
-  function save() {
+  const save = useCallback(() => {
     const saveButton = document.querySelector('[data-save-button]');
     if (saveButton) saveButton.click();
-  }
+  }, []);
 
-  useHotkeys(handlers);
+  const handlers = useMemo(() => ({
+    'j+mod': () => cycleTab(1),
+    'k+mod': () => cycleTab(-1),
+    's+mod': () => save(),
+  }), [cycleTab, save]);
+
+  useHotkeys(handlers, [activeTab]);
 
   return (
     <div className="space-y-6">
