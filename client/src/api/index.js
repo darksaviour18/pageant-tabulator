@@ -63,9 +63,9 @@ export const authAPI = {
 
 // --- Scoring ---
 export const scoringAPI = {
-  getContext: (judgeId, eventId) => api.get(`/scoring/${judgeId}/event/${eventId}`),
-  getCategoryScores: (judgeId, eventId, categoryId) =>
-    api.get(`/scoring/${judgeId}/event/${eventId}/category/${categoryId}`),
+  getContext: (judgeId, eventId, options) => api.get(`/scoring/${judgeId}/event/${eventId}`, options),
+  getCategoryScores: (judgeId, eventId, categoryId, options) =>
+    api.get(`/scoring/${judgeId}/event/${eventId}/category/${categoryId}`, options),
 };
 
 export const scoresAPI = {

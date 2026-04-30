@@ -22,6 +22,7 @@ export default function JudgeDashboard() {
   const [loadingScores, setLoadingScores] = useState(false);
   const [categoryScoreCounts, setCategoryScoreCounts] = useState({}); // { categoryId: { scored, total } }
   const unlockedTimeoutRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -31,6 +32,13 @@ export default function JudgeDashboard() {
     }
     setSession(s);
     loadScoringContext(s.judgeId, s.eventId);
+    
+    // Cleanup: abort in-flight request on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [navigate]);
 
   // Listen for admin unlock notifications
@@ -59,10 +67,19 @@ export default function JudgeDashboard() {
   }, [onEvent, selectedCategory]);
 
   const loadScoringContext = async (judgeId, eventId) => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
     try {
-      const res = await scoringAPI.getContext(judgeId, eventId);
+      const res = await scoringAPI.getContext(judgeId, eventId, {
+        signal: abortControllerRef.current.signal
+      });
       setScoringData(res.data);
     } catch (err) {
+      if (err.name === 'AbortError') return; // Ignore aborted requests
       setError(err.response?.data?.error || 'Failed to load scoring data');
     } finally {
       setLoading(false);
