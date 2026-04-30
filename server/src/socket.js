@@ -11,7 +11,12 @@ import { getDb } from './db/init.js';
 import jwt from 'jsonwebtoken';
 
 const HEARTBEAT_TIMEOUT_MS = 10000;
-const JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_SECRET || 'admin123';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.ADMIN_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('[Socket] FATAL: JWT_SECRET or ADMIN_SECRET must be set in environment');
+  process.exit(1);
+}
 
 /**
  * Track connected judges: socketId → { judgeId, eventId, lastHeartbeat }
@@ -173,26 +178,48 @@ export function setupSocketHandlers(io, app) {
 
     // --- Score Update (real-time broadcast, also saved via REST) ---
     socket.on('score_update', (data) => {
+      // Verify socket is authenticated
+      const conn = connectedJudges.get(socket.id);
+      if (!conn) {
+        return; // Ignore unauthenticated sockets
+      }
+
       const { judgeId, contestantId, criteriaId, categoryId, score } = data;
 
-      if (!judgeId || !contestantId || !criteriaId || !categoryId || score == null) {
+      // Verify the judgeId matches the authenticated socket
+      if (conn.judgeId !== judgeId) {
+        return; // Judge trying to submit scores for another judge
+      }
+
+      if (!contestantId || !criteriaId || !categoryId || score == null) {
         return;
       }
 
       broadcastScoreUpdate(io, judgeId, contestantId, criteriaId, categoryId, score);
-      broadcastJudgeProgress(io, judgeId, data.eventId || connectedJudges.get(socket.id)?.eventId, categoryId);
+      broadcastJudgeProgress(io, judgeId, conn.eventId, categoryId);
     });
 
     // --- Category Submission ---
     socket.on('category_submit', (data) => {
+      // Verify socket is authenticated
+      const conn = connectedJudges.get(socket.id);
+      if (!conn) {
+        return; // Ignore unauthenticated sockets
+      }
+
       const { judgeId, categoryId } = data;
 
       if (!judgeId || !categoryId) return;
 
-      io.emit('category_submitted', { judgeId, categoryId });
+      // Verify judgeId matches authenticated judge
+      if (conn.judgeId !== judgeId) {
+        return; // Judge trying to submit for another judge
+      }
 
+      io.emit('category_submitted', { judgeId, categoryId });
+      
       // Broadcast updated progress
-      const eventId = connectedJudges.get(socket.id)?.eventId;
+      const eventId = conn.eventId;
       if (eventId) {
         broadcastJudgeProgress(io, judgeId, eventId, categoryId);
       }

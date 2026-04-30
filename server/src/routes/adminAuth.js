@@ -7,9 +7,14 @@ dotenv.config();
 
 const router = Router();
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin123';
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 const JWT_SECRET = process.env.JWT_SECRET || ADMIN_SECRET;
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
+
+if (!ADMIN_SECRET) {
+  console.error('[Auth] FATAL: ADMIN_SECRET must be set in environment');
+  process.exit(1);
+}
 
 /**
  * POST /api/auth/admin
