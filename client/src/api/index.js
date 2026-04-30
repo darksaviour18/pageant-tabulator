@@ -43,7 +43,7 @@ export const contestantsAPI = {
 export const categoriesAPI = {
   create: (eventId, data) => api.post(`/events/${eventId}/categories`, data),
   getAll: (eventId) => api.get(`/events/${eventId}/categories`),
-  update: (id, data) => api.patch(`/categories/${id}`, data),
+  update: (eventId, id, data) => api.patch(`/events/${eventId}/categories/${id}`, data),
   delete: (eventId, categoryId) => api.delete(`/events/${eventId}/categories/${categoryId}`),
 };
 
