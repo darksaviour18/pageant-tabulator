@@ -2,7 +2,7 @@
 
 **Version:** 1.5
 **Last Updated:** 2026-04-24
-**Status:** v1.5 In Progress — UI/UX Overhaul
+**Status:** v1.5 Complete — Multi-Event Support, Photos, JWT Auth
 
 ---
 
@@ -238,6 +238,9 @@ ALTER TABLE events ADD COLUMN tabulators TEXT; -- JSON array: [{name: "REYMOND A
 
 -- Categories (extended v1.4) - add weight column
 ALTER TABLE categories ADD COLUMN weight REAL DEFAULT 1; -- for cross-category reports
+
+-- Contestants (extended v1.6) - add photo column
+ALTER TABLE contestants ADD COLUMN photo BLOB; -- WebP compressed photo
 ```
 
 ### 3.2 Entity Relationships
@@ -1808,6 +1811,64 @@ SQLite uses WAL (Write-Ahead Logging) mode for performance. On unexpected server
 | Modal enter | 200ms | cubic-bezier(0.16, 1, 0.3, 1) |
 | Tab indicator | 200ms | ease-in-out |
 | Toast slide | 300ms | ease-out |
+
+---
+
+## Appendix E: Changelog (Iteration 2)
+
+### v1.5 (2026-04-24) — Multi-Event Support, Photos, JWT Auth
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-Event Support** | Event switcher in admin header with dropdown. Persists selection to sessionStorage. |
+| **Event Switcher** | Dropdown in Header component shows all events, active events marked with green dot. |
+| **Contestant Photos** | Upload photos for contestants via ContestantsManager. Server compresses with Sharp (WebP, 800x800). |
+| **Photo Thumbnails** | ScoreSheet displays small photo thumbnails (from API `/events/:eventId/contestants/:id/photo`). |
+| **Photo Preview Modal** | Tap contestant photo in ScoreSheet for full-screen modal preview. |
+| **Face Detection** | Auto-face detection using face-api.js (tiny_face_detector model bundled in `/public/models`). |
+| **Manual Crop Fallback** | react-image-crop for manual cropping when auto-detection fails or poor positioning. |
+| **JWT Auth (Admin)** | Admin authentication uses JWT in httpOnly cookie (server: adminAuth.js). |
+| **Score Export CSV** | Export category scores to CSV via button in PrintReport page. |
+| **Audit Log Viewer** | New AuditLogs page in admin dashboard with filtering and pagination. |
+| **SyncStatus Memo** | Memoized SyncStatus component showing connection state and last sync time. |
+| **PWA Offline** | Service Worker with offline caching for 16 entries (~1.3MB). |
+
+#### Technical Changes
+
+| Change | Description |
+|--------|-------------|
+| **JWT Implementation** | Uses jsonwebtoken library, token in httpOnly cookie (secure, XSS-resistant). |
+| **Photo Storage** | Photos stored as BLOB in contestants table (WebP compressed). |
+| **Sharp Compression** | Server-side image compression using Sharp (works offline/LAN). |
+| **face-api.js Bundled** | Models bundled in `/public/models` for true offline support (not CDN). |
+| **Socket Cleanup** | Reduced socket event listeners, better cleanup on unmount. |
+
+#### UI Changes
+
+| Change | Description |
+|--------|-------------|
+| **Judge Header** | Event name prominent at top, app name minimal ("Pageant Tabulator Pro"). |
+| **Contestant Row** | Display includes small photo thumbnail next to name. |
+
+#### API New Endpoints
+
+```http
+POST /api/events/:eventId/contestants/:id/photo
+  - Upload contestant photo (multipart/form-data)
+  - Server compresses: resize 800x800, WebP quality 70
+
+GET /api/events/:eventId/contestants/:id/photo
+  - Returns WebP image (blob)
+
+GET /api/events/:eventId/audit-logs
+  - Query params: limit, offset, action
+  - Returns audit log entries with pagination
+
+GET /api/reports/:eventId/category/:categoryId/csv
+  - Download category report as CSV file
+```
 
 ---
 
