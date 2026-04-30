@@ -3,7 +3,7 @@ import { saveScore, markScoreSynced, getUnsyncedScores, db } from '../db';
 import { scoresAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 
-const SYNC_DEBOUNCE_MS = 250;
+const SYNC_DEBOUNCE_MS = 750;
 
 /**
  * Hook that manages auto-save of score entries.
