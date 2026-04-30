@@ -31,7 +31,7 @@ export default function Header() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            {events.length > 1 && (
+            {events.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
