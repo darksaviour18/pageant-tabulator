@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { contestantsService } from '../services/contestantsService.js';
+import { verifyAdmin } from './adminAuth.js';
 import sharp from 'sharp';
 
 const router = Router({ mergeParams: true });

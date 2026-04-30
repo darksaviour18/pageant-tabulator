@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db/init.js';
+import { verifyAdmin } from './adminAuth.js';
 
 const router = Router();
 
