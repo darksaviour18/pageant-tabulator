@@ -13,7 +13,7 @@ function getIo(req) {
  * GET /api/events/:eventId/contestants/:id/photo
  * Get contestant photo.
  */
-router.get('/:eventId/contestants/:id/photo', (req, res, next) => {
+router.get('/:id/photo', (req, res, next) => {
   const { id } = req.params;
 
   try {
