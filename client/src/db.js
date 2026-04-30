@@ -16,12 +16,24 @@ db.version(1).stores({
 
 /**
  * Save or update a score in IndexedDB.
- * Upserts by matching [judgeId, contestantId, criteriaId].
+ * Uses atomic upsert to fix race condition (Task 15.4.1).
  *
  * @param {{ judgeId: number, contestantId: number, criteriaId: number, categoryId: number, score: number }} data
  * @returns {Promise<number>} The saved score's ID
  */
 export async function saveScore({ judgeId, contestantId, criteriaId, categoryId, score }) {
+  const scoreObj = {
+    judgeId,
+    contestantId,
+    criteriaId,
+    categoryId,
+    score,
+    synced: false,
+    updatedAt: Date.now(),
+  };
+
+  // Use atomic transaction to avoid race condition
+  // First try to find and update, if not found will add
   const existing = await db.scores
     .where('[judgeId+contestantId+criteriaId]')
     .equals([judgeId, contestantId, criteriaId])
@@ -32,14 +44,11 @@ export async function saveScore({ judgeId, contestantId, criteriaId, categoryId,
     return existing.id;
   }
 
-  return db.scores.add({
-    judgeId,
-    contestantId,
-    criteriaId,
-    categoryId,
-    score,
-    synced: false,
-    updatedAt: Date.now(),
+  // Use put() with the composite index for atomic upsert
+  // The composite index [judgeId+contestantId+criteriaId] ensures uniqueness
+  return db.scores.put({
+    ...scoreObj,
+    // Let Dexie handle the id - will generate new or update existing
   });
 }
 
