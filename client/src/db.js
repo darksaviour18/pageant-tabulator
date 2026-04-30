@@ -8,9 +8,9 @@ import Dexie from 'dexie';
  */
 export const db = new Dexie('PageantTabulatorDB');
 
-db.version(1).stores({
+db.version(2).stores({
   // Composite primary keys for uniqueness
-  scores: '++id, [judgeId+contestantId+criteriaId], synced, updatedAt',
+  scores: '++id, [judgeId+contestantId+criteriaId], [judgeId+categoryId], synced, updatedAt',
   submissions: '++id, [judgeId+categoryId], synced, submittedAt',
 });
 
