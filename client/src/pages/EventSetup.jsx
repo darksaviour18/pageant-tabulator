@@ -73,15 +73,6 @@ export default function EventSetup() {
     }
   };
 
-  if (!selectedEventId && !isEditing) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-[var(--color-text-muted)] text-lg mb-4">No events found</p>
-        <p className="text-[var(--color-text-muted)] text-sm mb-6">Create your first event to get started</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       {/* Event Configuration */}
@@ -89,6 +80,14 @@ export default function EventSetup() {
         <h2 className="text-xl font-semibold text-[var(--color-text)] mb-4">
           Event Configuration
         </h2>
+
+        {!selectedEventId && !isEditing && (
+          <div className="text-center mb-6">
+            <p className="text-[var(--color-text-muted)] text-lg mb-2">No events found</p>
+            <p className="text-[var(--color-text-muted)] text-sm">Create your first event to get started</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1">
