@@ -76,7 +76,7 @@ export default function ScoreCell({
   );
 
   return (
-    <td className="p-1">
+    <div className="p-1">
       <div className="relative">
         <input
           ref={inputRef}
@@ -116,6 +116,6 @@ export default function ScoreCell({
           </div>
         )}
       </div>
-    </td>
+    </div>
   );
 }
