@@ -102,6 +102,9 @@ router.delete('/:id', verifyAdmin, (req, res, next) => {
     eventsService.delete(parseInt(id, 10));
     return res.status(204).send();
   } catch (err) {
+    if (err.message === 'Event not found') {
+      return res.status(404).json({ error: 'Event not found' });
+    }
     next(err);
   }
 });
