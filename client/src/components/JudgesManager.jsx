@@ -35,6 +35,7 @@ export default function JudgesManager({ eventId }) {
 
   const handleRemove = async (judgeId, judgeName) => {
     setConfirmDelete({
+      open: true,
       title: 'Remove Judge',
       message: `Remove "${judgeName}" from this event? This cannot be undone.`,
       confirmLabel: 'Remove',

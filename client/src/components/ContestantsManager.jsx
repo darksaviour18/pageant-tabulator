@@ -52,6 +52,7 @@ export default function ContestantsManager({ eventId }) {
 
   const handleWithdraw = async (id, contestantName) => {
     setConfirmDelete({
+      open: true,
       title: 'Withdraw Contestant',
       message: `Mark "${contestantName}" as withdrawn? They will no longer appear in scoring.`,
       confirmLabel: 'Withdraw',
