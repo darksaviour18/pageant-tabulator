@@ -128,7 +128,7 @@ router.get('/:roundId/qualifiers', (req, res, next) => {
  * DELETE /elimination-rounds/:roundId?event_id=X
  * Delete an elimination round and its qualifiers.
  */
-router.delete('/:roundId', (req, res, next) => {
+router.delete('/:roundId', verifyAdmin, (req, res, next) => {
   const { roundId } = req.params;
   const { event_id } = req.query;
 

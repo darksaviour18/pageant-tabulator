@@ -91,4 +91,19 @@ router.patch('/:id', verifyAdmin, (req, res, next) => {
   }
 });
 
+/**
+ * DELETE /api/events/:id
+ * Delete an event and all related data.
+ */
+router.delete('/:id', verifyAdmin, (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    eventsService.delete(parseInt(id, 10));
+    return res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

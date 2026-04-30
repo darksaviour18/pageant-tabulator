@@ -139,7 +139,7 @@ router.patch('/:id', (req, res, next) => {
  * DELETE /api/contestants/:id
  * Soft delete a contestant (set status to withdrawn).
  */
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', verifyAdmin, (req, res, next) => {
   const { id } = req.params;
 
   try {

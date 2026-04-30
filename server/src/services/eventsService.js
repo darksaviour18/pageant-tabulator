@@ -115,4 +115,45 @@ export const eventsService = {
 
     return this.getById(id);
   },
+
+  /**
+   * Delete an event and all related data.
+   * @param {number} id
+   */
+  delete(id) {
+    const db = getDb();
+    const event = this.getById(id);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    db.transaction(() => {
+      // Delete scores first (references judges, contestants, criteria)
+      db.prepare('DELETE FROM scores WHERE event_id = ?').run(id);
+
+      // Delete elimination rounds
+      db.prepare('DELETE FROM elimination_rounds WHERE event_id = ?').run(id);
+
+      // Delete criteria (references categories)
+      db.prepare(`
+        DELETE FROM criteria WHERE category_id IN (
+          SELECT id FROM categories WHERE event_id = ?
+        )
+      `).run(id);
+
+      // Delete categories
+      db.prepare('DELETE FROM categories WHERE event_id = ?').run(id);
+
+      // Delete judges
+      db.prepare('DELETE FROM judges WHERE event_id = ?').run(id);
+
+      // Delete contestants
+      db.prepare('DELETE FROM contestants WHERE event_id = ?').run(id);
+
+      // Finally delete the event
+      db.prepare('DELETE FROM events WHERE id = ?').run(id);
+    })();
+
+    return { success: true };
+  },
 };
