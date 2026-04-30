@@ -90,8 +90,8 @@ export default function ScoreCell({
           disabled={isReadOnly}
           className={`w-full px-2 py-3 text-center text-sm rounded-md border-2 outline-none transition-all min-h-[56px]
             ${isReadOnly ? 'bg-[var(--color-bg-subtle)] border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}
-            ${isError ? 'border-red-500 bg-red-500/10' : ''}
-            ${isUnsaved && !isError ? 'border-[var(--color-cta)] bg-[var(--color-cta)]/10' : ''}
+            ${isError ? 'border-red-500 bg-red-500/10 animate-pulse' : ''}
+            ${isUnsaved && !isError ? 'border-[var(--color-cta)] bg-[var(--color-cta)]/10 animate-pulse' : ''}
             ${isSaved && !isUnsaved ? 'border-green-500/30 bg-green-500/10' : ''}
             ${!isSaved && !isUnsaved && !isError ? 'border-[var(--color-border)] bg-[var(--color-bg-subtle)] focus:border-[var(--color-cta)]' : ''}
           `}
