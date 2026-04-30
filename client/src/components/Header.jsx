@@ -6,6 +6,11 @@ import { useTheme } from '../context/ThemeContext';
 import { useEvent } from '../context/EventContext';
 
 export default function Header() {
+  const handleLogout = () => {
+    clearAdminSession();
+    window.location.href = '/admin/login';
+  };
+
   const { isDark } = useTheme();
   const eventContext = useEvent();
   
