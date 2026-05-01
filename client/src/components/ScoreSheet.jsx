@@ -24,6 +24,7 @@ export default function ScoreSheet({
   onContestantsChange,
   onScoreChange,
   onScoreSaved,
+  isSubmitted: isSubmittedProp,
 }) {
   const { onEvent } = useSocket();
   const { isDark } = useTheme();
@@ -37,7 +38,7 @@ export default function ScoreSheet({
 
   // Auto-save: write to IndexedDB immediately, debounce POST to server
   // Must come BEFORE useOfflineScores because refetchKey is used below
-  const { saveAndSync, syncNow, getPendingCount, isSyncing, conflict, resolveConflict, refetchKey } = useAutoSave({
+  const { saveAndSync, syncNow, getPendingCount, isSyncing, clearSyncStatus, conflict, resolveConflict, refetchKey } = useAutoSave({
     judgeId,
     eventId,
     categoryId: category.id,
@@ -50,8 +51,19 @@ export default function ScoreSheet({
     { serverScores, refetchKey }
   );
 
-  const isReadOnly = isSubmitted || category.is_locked;
+  const isReadOnly = (isSubmittedProp !== undefined ? isSubmittedProp : isSubmitted) || category.is_locked;
   const criteria = category.criteria || [];
+
+  // Reset sync status when category becomes unlocked (e.g., after admin unlock)
+  // This prevents stuck syncing state after category transitions from submitted/locked to editable
+  const prevIsReadOnlyRef = useRef(isReadOnly);
+  useEffect(() => {
+    if (prevIsReadOnlyRef.current && !isReadOnly) {
+      // Transitioned from read-only to editable - clear stuck sync status
+      clearSyncStatus();
+    }
+    prevIsReadOnlyRef.current = isReadOnly;
+  }, [isReadOnly, clearSyncStatus]);
 
   // Handle score change: save locally + queue for server sync
   const handleScoreChange = useCallback(

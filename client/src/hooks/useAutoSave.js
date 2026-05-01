@@ -238,6 +238,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
       const inSyncStatus = syncStatus[`${contestantId}:${criteriaId}`] || false;
       return inQueue || inSyncStatus || syncingRef.current;
     },
+    clearSyncStatus: () => setSyncStatus({}),
     conflict,
     resolveConflict,
     refetchKey,
