@@ -195,6 +195,7 @@ router.post('/', (req, res, next) => {
         category_id: saved.category_id,
         score: saved.score,
       });
+      console.log(`[DEBUG] REST: Emitted score_updated to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId: saved.judge_id, categoryId: saved.category_id, score: saved.score });
     }
 
     // Invalidate report cache for this category
@@ -306,6 +307,21 @@ router.post('/batch', (req, res, next) => {
     // Invalidate report cache for affected categories
     for (const eventId of result.eventIds) {
       invalidateReportCache(eventId);
+    }
+
+    // Broadcast real-time score updates to admins
+    const io = getIo(req);
+    if (io && result.saved > 0) {
+      for (const s of scores) {
+        io.to('admins').emit('score_updated', {
+          judge_id: s.judge_id,
+          contestant_id: s.contestant_id,
+          criteria_id: s.criteria_id,
+          category_id: s.category_id,
+          score: s.score,
+        });
+        console.log(`[DEBUG] BATCH: Emitted score_updated to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId: s.judge_id, categoryId: s.category_id, score: s.score });
+      }
     }
 
     return res.json({ saved: result.saved, errors: result.errors });

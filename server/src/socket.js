@@ -109,6 +109,7 @@ function broadcastJudgeProgress(io, judgeId, eventId, categoryId) {
     total: criteriaCount,
     submitted: !!submission?.submitted,
   });
+  console.log(`[DEBUG] Emitted judge_progress to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId, categoryId, scored: scoredCount, total: criteriaCount });
 }
 
 /**
@@ -122,6 +123,7 @@ function broadcastScoreUpdate(io, judgeId, contestantId, criteriaId, categoryId,
     category_id: categoryId,
     score,
   });
+  console.log(`[DEBUG] Emitted score_updated to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId, categoryId, contestantId, criteriaId, score });
 }
 
 /**
@@ -230,7 +232,8 @@ export function setupSocketHandlers(io, app) {
         return; // Judge trying to submit for another judge
       }
 
-      io.emit('category_submitted', { judgeId, categoryId });
+      io.to('admins').emit('category_submitted', { judgeId, categoryId });
+      console.log(`[DEBUG] Emitted category_submitted to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId, categoryId });
       
       // Broadcast updated progress
       const eventId = conn.eventId;
