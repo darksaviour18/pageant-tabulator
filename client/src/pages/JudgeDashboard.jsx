@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
-import { scoringAPI, submissionsAPI } from '../api';
+import { scoringAPI, submissionsAPI, scoresAPI } from '../api';
 import ScoreSheet from '../components/ScoreSheet';
 import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
@@ -21,6 +21,7 @@ export default function JudgeDashboard() {
   const [categoryScores, setCategoryScores] = useState([]);
   const [loadingScores, setLoadingScores] = useState(false);
   const [categoryScoreCounts, setCategoryScoreCounts] = useState({}); // { categoryId: { scored, total } }
+  const [allScores, setAllScores] = useState([]); // All scores for progress bars
   const unlockedTimeoutRef = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -40,6 +41,22 @@ export default function JudgeDashboard() {
       }
     };
   }, [navigate]);
+
+  // Fetch all scores for progress bars (independent of category selection)
+  useEffect(() => {
+    if (!session) return;
+    
+    const fetchAllScores = async () => {
+      try {
+        const res = await scoresAPI.getAllByJudge(session.judgeId);
+        setAllScores(res.data || []);
+      } catch (err) {
+        console.error('Failed to load all scores:', err);
+      }
+    };
+    
+    fetchAllScores();
+  }, [session]);
 
   // Listen for admin unlock notifications
   useEffect(() => {
@@ -146,6 +163,26 @@ export default function JudgeDashboard() {
     });
   }, [selectedCategory]);
 
+  // Update allScores when score is saved (for real-time progress updates)
+  const handleScoreSaved = useCallback((contestantId, criteriaId, categoryId, score) => {
+    setAllScores((prev) => {
+      const existing = prev.find(
+        s => s.contestant_id === contestantId && s.criteria_id === criteriaId && s.category_id === categoryId
+      );
+      if (existing) {
+        // Update existing
+        return prev.map(s => 
+          s.contestant_id === contestantId && s.criteria_id === criteriaId && s.category_id === categoryId
+            ? { ...s, score, updated_at: new Date().toISOString() }
+            : s
+        );
+      } else {
+        // Add new
+        return [...prev, { contestant_id: contestantId, criteria_id: criteriaId, category_id: categoryId, score }];
+      }
+    });
+  }, []);
+
   const handleSubmitCategory = async () => {
     if (!session || !selectedCategory) return;
 
@@ -226,6 +263,7 @@ export default function JudgeDashboard() {
             onSubmit={handleSubmitCategory}
             onContestantsChange={handleContestantsChange}
             onScoreChange={handleScoreChange}
+            onScoreSaved={handleScoreSaved}
           />
         )}
       </div>
@@ -297,8 +335,9 @@ export default function JudgeDashboard() {
             const totalCells = (scoringData.contestants?.length || 0) * criteriaCount;
             const isLocked = cat.is_locked;
             const isSubmitted = submittedCategories.has(cat.id);
-            // Get scored count from tracked state (updated when category loads + when user scores)
-            const scored = categoryScoreCounts[cat.id]?.scored || 0;
+            // Get scored count from all scores (fetched on mount)
+            const categoryScores = allScores.filter(s => s.category_id === cat.id && s.score != null && s.score !== '');
+            const scored = categoryScores.length;
             const hasScores = scored > 0;
 
             return (

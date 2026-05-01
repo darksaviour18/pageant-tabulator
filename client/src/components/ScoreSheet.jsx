@@ -23,6 +23,7 @@ export default function ScoreSheet({
   onSubmit,
   onContestantsChange,
   onScoreChange,
+  onScoreSaved,
 }) {
   const { onEvent } = useSocket();
   const { isDark } = useTheme();
@@ -61,6 +62,11 @@ export default function ScoreSheet({
       
       saveAndSync(contestantId, criteriaId, score);
       
+      // Update allScores in parent for real-time progress updates
+      if (onScoreSaved) {
+        onScoreSaved(contestantId, criteriaId, category.id, score);
+      }
+      
       // Notify parent to update progress bar in real-time
       if (onScoreChange) {
         if (!hadScoreBefore && hasScoreNow) {
@@ -70,7 +76,7 @@ export default function ScoreSheet({
         }
       }
     },
-    [saveAndSync, getScore, onScoreChange]
+    [saveAndSync, getScore, onScoreChange, onScoreSaved, category]
   );
 
   // Force flush remaining scores on category submit
@@ -186,10 +192,7 @@ export default function ScoreSheet({
               isSaved={saved}
               isSyncing={syncing}
               isReadOnly={effectiveReadOnly}
-              onChange={(score) => {
-                console.log('Score change:', contestant.id, crit.id, 'syncing before:', isSyncing(contestant.id, crit.id));
-                handleScoreChange(contestant.id, crit.id, score);
-              }}
+              onChange={(score) => handleScoreChange(contestant.id, crit.id, score)}
               rowIndex={row.index}
               colIndex={idx}
               totalRows={contestants.length}

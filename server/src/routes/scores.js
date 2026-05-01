@@ -86,6 +86,31 @@ router.get('/', (req, res, next) => {
 });
 
 /**
+ * GET /api/scores/judge/:judgeId
+ * Get all scores for a judge across all categories.
+ * Used for progress bars on category cards.
+ */
+router.get('/judge/:judgeId', (req, res, next) => {
+  const { judgeId } = req.params;
+
+  if (!judgeId) {
+    return res.status(400).json({ error: 'judgeId param is required' });
+  }
+
+  try {
+    const db = getDb();
+    const scores = db
+      .prepare(
+        'SELECT contestant_id, criteria_id, category_id, score, updated_at FROM scores WHERE judge_id = ?'
+      )
+      .all(judgeId);
+    return res.json(scores);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/scores
  * Save or update a single score.
  */
