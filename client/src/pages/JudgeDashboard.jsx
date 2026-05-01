@@ -53,6 +53,16 @@ export default function JudgeDashboard() {
       } catch (err) {
         console.error('Failed to load all scores:', err);
       }
+
+      // 10.2.7: Initialize submitted categories from server
+      try {
+        const subRes = await submissionsAPI.getByJudgeAndEvent(session.judgeId, session.eventId);
+        if (subRes.data?.submittedCategories) {
+          setSubmittedCategories(new Set(subRes.data.submittedCategories));
+        }
+      } catch (err) {
+        console.error('Failed to load submission status:', err);
+      }
     };
     
     fetchAllScores();
@@ -114,6 +124,11 @@ export default function JudgeDashboard() {
     try {
       const res = await scoringAPI.getCategoryScores(session.judgeId, session.eventId, cat.id);
       setCategoryScores(res.data.scores || []);
+
+      // 10.2.7: Track submitted status from API response
+      if (res.data.submitted) {
+        setSubmittedCategories(prev => new Set([...prev, cat.id]));
+      }
 
       // 10.2.6: Track score count for this category
       const total = (scoringData.contestants?.length || 0) * (cat.criteria?.length || 0);
@@ -259,6 +274,7 @@ export default function JudgeDashboard() {
             category={selectedCategory}
             contestants={scoringData.contestants}
             serverScores={categoryScores}
+            isSubmitted={submittedCategories.has(selectedCategory.id)}
             onBack={handleBackToCategories}
             onSubmit={handleSubmitCategory}
             onContestantsChange={handleContestantsChange}

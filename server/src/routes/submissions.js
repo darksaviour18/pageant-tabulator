@@ -41,10 +41,11 @@ router.post('/', (req, res, next) => {
       writeAuditLog(eventRow.event_id, judge_id, 'category_submitted', { category_id });
     }
 
-    // Broadcast submission event
+    // Broadcast submission event to admins room
     const io = getIo(req);
     if (io) {
-      io.emit('category_submitted', { judgeId: judge_id, categoryId: category_id });
+      io.to('admins').emit('category_submitted', { judgeId: judge_id, categoryId: category_id });
+      console.log(`[DEBUG] REST: Emitted category_submitted to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId: judge_id, categoryId: category_id });
     }
 
     return res.status(201).json(submission);
@@ -89,6 +90,42 @@ router.post('/unlock', verifyAdmin, async (req, res, next) => {
     }
 
     return res.json(submission || { judge_id, category_id, unlocked_by_admin: 1 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/submissions/:judgeId/event/:eventId
+ * Get all submission statuses for a judge in an event.
+ */
+router.get('/:judgeId/event/:eventId', (req, res, next) => {
+  const { judgeId, eventId } = req.params;
+
+  try {
+    const db = getDb();
+
+    // Get all categories for this event
+    const categories = db
+      .prepare('SELECT id, name FROM categories WHERE event_id = ? ORDER BY display_order')
+      .all(parseInt(eventId, 10));
+
+    // Get all submissions for this judge
+    const submissions = db
+      .prepare('SELECT category_id, submitted, submitted_at, unlocked_by_admin FROM category_submissions WHERE judge_id = ?')
+      .all(parseInt(judgeId, 10));
+
+    // Map to category IDs that are submitted
+    const submittedSet = new Set();
+    for (const sub of submissions) {
+      if (sub.submitted) {
+        submittedSet.add(sub.category_id);
+      }
+    }
+
+    return res.json({
+      submittedCategories: Array.from(submittedSet),
+    });
   } catch (err) {
     next(err);
   }

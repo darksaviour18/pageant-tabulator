@@ -26,7 +26,10 @@ export const judgesAPI = {
 // --- Contestants ---
 export const contestantsAPI = {
   create: (eventId, data) => api.post(`/events/${eventId}/contestants`, data),
-  getAll: (eventId) => api.get(`/events/${eventId}/contestants`),
+  getAll: (eventId, params) => {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.get(`/events/${eventId}/contestants${queryString}`);
+  },
   update: (eventId, id, data) => api.patch(`/events/${eventId}/contestants/${id}`, data),
   delete: (eventId, id) => api.delete(`/events/${eventId}/contestants/${id}`),
   uploadPhoto: (eventId, contestantId, file) => {
@@ -79,6 +82,8 @@ export const submissionsAPI = {
     api.post('/submissions', { judge_id: judgeId, category_id: categoryId }),
   unlockCategory: (judgeId, categoryId) =>
     api.post('/submissions/unlock', { judge_id: judgeId, category_id: categoryId }),
+  getByJudgeAndEvent: (judgeId, eventId) =>
+    api.get(`/submissions/${judgeId}/event/${eventId}`),
 };
 
 // --- Reports ---
