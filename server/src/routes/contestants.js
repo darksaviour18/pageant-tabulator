@@ -91,13 +91,20 @@ router.post('/', async (req, res, next) => {
 
 /**
  * GET /api/events/:eventId/contestants
- * Get all contestants for an event.
+ * Get all contestants for an event. Optional ?status=active to filter.
  */
 router.get('/', (req, res, next) => {
   const { eventId } = req.params;
+  const { status } = req.query;
 
   try {
-    const contestants = contestantsService.getAll(parseInt(eventId, 10));
+    let contestants = contestantsService.getAll(parseInt(eventId, 10));
+    
+    // Filter by status if provided
+    if (status) {
+      contestants = contestants.filter(c => c.status === status);
+    }
+    
     return res.json(contestants);
   } catch (err) {
     next(err);

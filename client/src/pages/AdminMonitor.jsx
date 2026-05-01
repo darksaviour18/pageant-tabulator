@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { eventsAPI, judgesAPI, categoriesAPI } from '../api';
+import { eventsAPI, judgesAPI, categoriesAPI, contestantsAPI } from '../api';
 import { submissionsAPI } from '../api';
+import { scoresAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import SyncStatus from '../components/SyncStatus';
@@ -60,39 +61,68 @@ export default function AdminMonitor() {
       const categoriesRes = await categoriesAPI.getAll(activeEvent.id);
       setCategories(categoriesRes.data);
 
-      // 10.2.8 + 11.3.1: Fetch existing scores with AbortController + timeout
+      // Get active contestants count for the event (matches scoring API behavior)
+      const contestantsRes = await contestantsAPI.getAll(activeEvent.id, { status: 'active' });
+      const contestantCount = contestantsRes.data.length || 0;
+
+      // Build progress for each judge×category
       const initialProgress = {};
       const initialLockStatus = {};
-      const fetchPromises = [];
 
-      for (const judge of judgesRes.data) {
-        for (const cat of categoriesRes.data) {
-          const criteriaCount = cat.criteria?.length || 0;
-          const key = `${judge.id}:${cat.id}`;
+      // Fetch scores and submissions for each judge in parallel
+      const judgePromises = judgesRes.data.map(async (judge) => {
+        try {
+          // Get all scores for this judge
+          const scoresRes = await scoresAPI.getAllByJudge(judge.id);
+          const allScores = scoresRes.data || [];
 
-          initialProgress[key] = { scored: 0, total: criteriaCount, submitted: false };
+          // Get submitted categories for this judge
+          const subRes = await submissionsAPI.getByJudgeAndEvent(judge.id, activeEvent.id);
+          const submittedCategories = subRes.data?.submittedCategories || [];
 
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 5000);
+          // Compute progress for each category
+          const categoryProgress = {};
+          for (const cat of categoriesRes.data) {
+            const criteriaCount = cat.criteria?.length || 0;
+            const total = contestantCount * criteriaCount;
+            const key = `${judge.id}:${cat.id}`;
 
-          fetchPromises.push(
-            axios
-              .get(`/api/scoring/${judge.id}/event/${activeEvent.id}/category/${cat.id}`, {
-                signal: controller.signal,
-              })
-              .then((res) => {
-                initialProgress[key].scored = res.data.scores?.length || 0;
-              })
-              .catch(() => {
-                // Timeout or error — keep scored at 0
-              })
-              .finally(() => clearTimeout(timeout))
-          );
+            // Count non-null scores for this category
+            const categoryScores = allScores.filter(
+              s => s.category_id === cat.id && s.score != null && s.score !== ''
+            );
+            const scored = categoryScores.length;
+
+            // DEBUG: Log progress calculation
+            console.log(`[DEBUG] Judge ${judge.id}, Category ${cat.id}: scored=${scored}, total=${total} (contestants=${contestantCount}, criteria=${criteriaCount})`);
+
+            categoryProgress[key] = {
+              scored,
+              total,
+              submitted: submittedCategories.includes(cat.id),
+            };
+          }
+
+          return categoryProgress;
+        } catch (err) {
+          console.error(`Failed to load data for judge ${judge.id}:`, err);
+          // Return empty progress for this judge
+          const emptyProgress = {};
+          for (const cat of categoriesRes.data) {
+            const key = `${judge.id}:${cat.id}`;
+            const criteriaCount = cat.criteria?.length || 0;
+            emptyProgress[key] = { scored: 0, total: contestantCount * criteriaCount, submitted: false };
+          }
+          return emptyProgress;
         }
-      }
+      });
 
-      // Wait for all score fetches (with individual timeouts)
-      await Promise.allSettled(fetchPromises);
+      const allProgressArrays = await Promise.all(judgePromises);
+
+      // Merge all judge progress into single object
+      for (const progressObj of allProgressArrays) {
+        Object.assign(initialProgress, progressObj);
+      }
 
       setProgress(initialProgress);
       setLockStatus(initialLockStatus);
@@ -106,6 +136,7 @@ export default function AdminMonitor() {
   // Listen to real-time socket events
   useEffect(() => {
     const unsubProgress = onEvent('judge_progress', (data) => {
+      console.log('[DEBUG] Client received judge_progress', data);
       setProgress((prev) => ({
         ...prev,
         [`${data.judgeId}:${data.categoryId}`]: {
@@ -117,6 +148,7 @@ export default function AdminMonitor() {
     });
 
     const unsubSubmitted = onEvent('category_submitted', (data) => {
+      console.log('[DEBUG] Client received category_submitted', data);
       setProgress((prev) => ({
         ...prev,
         [`${data.judgeId}:${data.categoryId}`]: {
@@ -126,10 +158,37 @@ export default function AdminMonitor() {
       }));
     });
 
+    // Listen for score updates to refresh progress when judge saves scores
+    const unsubScoreUpdated = onEvent('score_updated', (data) => {
+      console.log('[DEBUG] Client received score_updated', data);
+      // Server emits snake_case: judge_id, category_id
+      const key = `${data.judge_id}:${data.category_id}`;
+      setProgress((prev) => {
+        const current = prev[key] || { scored: 0, total: 0, submitted: false };
+        const newScored = Math.min((current.scored || 0) + 1, current.total || 999);
+        return {
+          ...prev,
+          [key]: {
+            ...current,
+            scored: newScored,
+          },
+        };
+      });
+    });
+
     return () => {
       unsubProgress();
       unsubSubmitted();
+      unsubScoreUpdated();
     };
+  }, [onEvent]);
+
+  // Handle socket reconnection - refresh data on reconnect
+  useEffect(() => {
+    const unsubReconnect = onEvent('connect', () => {
+      loadInitialData();
+    });
+    return () => unsubReconnect();
   }, [onEvent]);
 
   const handleUnlock = useCallback(async (judgeId, judgeName, categoryId, categoryName) => {
@@ -327,15 +386,19 @@ export default function AdminMonitor() {
                               ? 'bg-green-500'
                               : cat.is_locked
                               ? 'bg-[var(--color-text-muted)]'
+                              : pct >= 67
+                              ? 'bg-green-400'
+                              : pct >= 34
+                              ? 'bg-yellow-500'
                               : pct > 0
-                              ? 'bg-[var(--color-cta)]'
+                              ? 'bg-red-500'
                               : 'bg-[var(--color-border)]'
                           }`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
                       <div className="text-xs text-[var(--color-text-muted)] mt-1">
-                        {p.scored}/{p.total} scored
+                        {pct}%
                       </div>
                     </div>
                   );
