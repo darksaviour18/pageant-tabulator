@@ -22,12 +22,14 @@ db.version(2).stores({
  * @returns {Promise<number>} The saved score's ID
  */
 export async function saveScore({ judgeId, contestantId, criteriaId, categoryId, score }) {
+  // If score is null/undefined, store as null to mark as cleared (not delete)
+  // This allows getScore to return null immediately
   const scoreObj = {
     judgeId,
     contestantId,
     criteriaId,
     categoryId,
-    score,
+    score, // could be null for cleared
     synced: false,
     updatedAt: Date.now(),
   };

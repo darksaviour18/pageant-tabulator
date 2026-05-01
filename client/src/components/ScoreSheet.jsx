@@ -22,6 +22,7 @@ export default function ScoreSheet({
   onBack,
   onSubmit,
   onContestantsChange,
+  onScoreChange,
 }) {
   const { onEvent } = useSocket();
   const { isDark } = useTheme();
@@ -54,9 +55,22 @@ export default function ScoreSheet({
   // Handle score change: save locally + queue for server sync
   const handleScoreChange = useCallback(
     (contestantId, criteriaId, score) => {
+      const prevScore = getScore(contestantId, criteriaId);
+      const hasScoreNow = score !== null && score !== '';
+      const hadScoreBefore = prevScore !== null && prevScore !== '';
+      
       saveAndSync(contestantId, criteriaId, score);
+      
+      // Notify parent to update progress bar in real-time
+      if (onScoreChange) {
+        if (!hadScoreBefore && hasScoreNow) {
+          onScoreChange(true); // New score added
+        } else if (hadScoreBefore && !hasScoreNow) {
+          onScoreChange(false); // Score was cleared
+        }
+      }
     },
-    [saveAndSync]
+    [saveAndSync, getScore, onScoreChange]
   );
 
   // Force flush remaining scores on category submit
@@ -159,6 +173,10 @@ export default function ScoreSheet({
           const syncing = isSyncing(contestant.id, crit.id);
           const unsaved = isUnsaved(contestant.id, crit.id);
           const saved = value !== null && !unsaved && !syncing;
+          
+          // DEBUG
+          const key = `${contestant.id}:${crit.id}`;
+          const inQueue = false; // Can't access queueRef here, but syncing should tell us
 
           return (
             <ScoreCell
@@ -168,7 +186,10 @@ export default function ScoreSheet({
               isSaved={saved}
               isSyncing={syncing}
               isReadOnly={effectiveReadOnly}
-              onChange={(score) => handleScoreChange(contestant.id, crit.id, score)}
+              onChange={(score) => {
+                console.log('Score change:', contestant.id, crit.id, 'syncing before:', isSyncing(contestant.id, crit.id));
+                handleScoreChange(contestant.id, crit.id, score);
+              }}
               rowIndex={row.index}
               colIndex={idx}
               totalRows={contestants.length}

@@ -42,6 +42,11 @@ function checkCategoryAccessible(db, judgeId, categoryId) {
  * Returns { valid: true } or { valid: false, error: string, status: number }.
  */
 function validateScoreRange(db, criteriaId, score) {
+  // Allow null/empty scores (for clearing)
+  if (score === null || score === undefined || score === '') {
+    return { valid: true };
+  }
+  
   const criterion = db.prepare('SELECT name, min_score, max_score FROM criteria WHERE id = ?').get(criteriaId);
   if (!criterion) {
     return { valid: false, error: 'Criterion not found', status: 404 };
@@ -242,10 +247,11 @@ router.post('/batch', (req, res, next) => {
 
       for (let i = 0; i < entries.length; i++) {
         const s = entries[i];
-        if (!s.judge_id || !s.contestant_id || !s.criteria_id || !s.category_id || s.score == null) {
+        if (!s.judge_id || !s.contestant_id || !s.criteria_id || !s.category_id) {
           errors.push({ index: i, error: 'Missing required fields' });
           continue;
         }
+        // Allow null scores (for clearing/resetting scores)
 
         // 10.1.2: Validate score range per entry
         const rangeCheck = validateScoreRange(db, s.criteria_id, s.score);

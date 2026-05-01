@@ -32,6 +32,11 @@ export default function ScoreCell({
 
   const handleBlur = useCallback(() => {
     setEditing(false);
+    // Handle empty/cleared score
+    if (draft === '' && value !== null && value !== '') {
+      onChange(null); // Score was cleared
+      return;
+    }
     // Save on blur if changed and valid
     const num = parseFloat(draft);
     if (!isNaN(num) && isValid && num !== value) {

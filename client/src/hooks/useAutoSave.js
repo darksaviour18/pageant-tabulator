@@ -3,7 +3,7 @@ import { saveScore, markScoreSynced, getUnsyncedScores, db } from '../db';
 import { scoresAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 
-const SYNC_DEBOUNCE_MS = 750;
+const SYNC_DEBOUNCE_MS = 1000;
 
 /**
  * Hook that manages auto-save of score entries.
@@ -29,6 +29,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
   const { reconnectCount } = useSocket();
   const [conflict, setConflict] = useState(null); // { localCount, serverCount, onKeepLocal, onDiscardLocal }
   const [refetchKey, setRefetchKey] = useState(0); // Bump to signal ScoreSheet to re-fetch
+  const [syncStatus, setSyncStatus] = useState({}); // Track which cells are syncing { "contestantId:criteriaId": true/false }
 
   const flushQueue = useCallback(async () => {
     if (queueRef.current.size === 0 || syncingRef.current) return;
@@ -47,23 +48,28 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
 
     try {
       const res = await scoresAPI.batchSubmitScores(batch);
-      if (res.data?.saved) {
-        // Mark synced for each successfully saved score
+      console.log('[useAutoSave] Batch sync result:', res.data);
+      
+      // Mark all scores as synced after successful batch
+      if (res.data?.saved > 0) {
         for (const entry of batch) {
-          // We don't have the IndexedDB ID here, so we mark by composite key
           await markScoreSyncedByComposite(
             judgeId,
             entry.contestant_id,
             entry.criteria_id
           );
         }
-        // Only clear the queue on success
-        queueRef.current.clear();
-        // Bump refetchKey to trigger ScoreSheet to re-fetch local scores with updated synced state
-        setRefetchKey((k) => k + 1);
       }
+      
+      // Clear sync status for all cells that were syncing
+      setSyncStatus({});
+      
+      // Even if some entries fail, clear the queue to avoid stuck state
+      // The sync will retry on next change
+      queueRef.current.clear();
+      setRefetchKey((k) => k + 1);
     } catch (err) {
-      console.warn('[useAutoSave] Batch sync failed, will retry on next change:', err);
+      console.warn('[useAutoSave] Batch sync failed:', err);
       // Queue is NOT cleared on failure — scores remain pending for next retry
     } finally {
       syncingRef.current = false;
@@ -197,6 +203,13 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
 
       // 2. Queue for debounced server sync
       queueRef.current.set(`${contestantId}:${criteriaId}`, score);
+      
+      // 3. Update sync status to trigger re-render and show animation
+      setSyncStatus(prev => ({
+        ...prev,
+        [`${contestantId}:${criteriaId}`]: true
+      }));
+      
       scheduleSync();
 
       return dbId;
@@ -220,7 +233,10 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
     syncNow,
     getPendingCount: () => queueRef.current.size,
     isSyncing: (contestantId, criteriaId) => {
-      return queueRef.current.has(`${contestantId}:${criteriaId}`) || syncingRef.current;
+      // Check both queue (for immediate detection) and syncStatus state (for re-render)
+      const inQueue = queueRef.current.has(`${contestantId}:${criteriaId}`);
+      const inSyncStatus = syncStatus[`${contestantId}:${criteriaId}`] || false;
+      return inQueue || inSyncStatus || syncingRef.current;
     },
     conflict,
     resolveConflict,

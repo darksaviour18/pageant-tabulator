@@ -92,9 +92,15 @@ export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSyn
       const local = localScores.find(
         (s) => s.contestantId === contestantId && s.criteriaId === criteriaId
       );
-      if (local) return local.score;
-
-      // Fall back to server scores
+      // If local entry exists and score is not null/undefined, return it
+      if (local !== undefined && local.score != null) {
+        return local.score;
+      }
+      // If local score is null (cleared), return null immediately (don't fall back to server)
+      if (local !== undefined && local.score === null) {
+        return null;
+      }
+      // No local entry - fall back to server scores
       const server = serverScores.find(
         (s) => s.contestant_id === contestantId && s.criteria_id === criteriaId
       );

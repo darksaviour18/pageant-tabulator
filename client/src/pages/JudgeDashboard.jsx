@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
@@ -99,9 +99,12 @@ export default function JudgeDashboard() {
       setCategoryScores(res.data.scores || []);
 
       // 10.2.6: Track score count for this category
+      const total = (scoringData.contestants?.length || 0) * (cat.criteria?.length || 0);
+      // Count only non-null scores (not empty)
+      const scoredCount = (res.data.scores || []).filter(s => s.score != null && s.score !== '').length;
       setCategoryScoreCounts((prev) => ({
         ...prev,
-        [cat.id]: { scored: (res.data.scores || []).length, total: cat.criteria?.length || 0 },
+        [cat.id]: { scored: scoredCount, total },
       }));
     } catch (err) {
       console.error('Failed to load category scores:', err);
@@ -127,8 +130,33 @@ export default function JudgeDashboard() {
     }
   };
 
+  // Update progress bar in real-time when scores change
+  const handleScoreChange = useCallback((hasScore) => {
+    if (!selectedCategory) return;
+    setCategoryScoreCounts((prev) => {
+      const current = prev[selectedCategory.id] || { scored: 0, total: 0 };
+      const newScored = current.scored + (hasScore ? 1 : -1);
+      return {
+        ...prev,
+        [selectedCategory.id]: {
+          ...current,
+          scored: Math.max(0, newScored),
+        },
+      };
+    });
+  }, [selectedCategory]);
+
   const handleSubmitCategory = async () => {
     if (!session || !selectedCategory) return;
+
+    // Validate all scores are filled
+    const totalCells = (scoringData.contestants?.length || 0) * (selectedCategory.criteria?.length || 0);
+    const scoredCells = categoryScoreCounts[selectedCategory.id]?.scored || 0;
+
+    if (scoredCells < totalCells) {
+      setError(`Please complete all ${totalCells} score fields before submitting. You have ${scoredCells} of ${totalCells} complete.`);
+      return;
+    }
 
     try {
       await submissionsAPI.submitCategory(session.judgeId, selectedCategory.id);
@@ -197,6 +225,7 @@ export default function JudgeDashboard() {
             onBack={handleBackToCategories}
             onSubmit={handleSubmitCategory}
             onContestantsChange={handleContestantsChange}
+            onScoreChange={handleScoreChange}
           />
         )}
       </div>
@@ -265,16 +294,19 @@ export default function JudgeDashboard() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scoringData.categories.map((cat) => {
             const criteriaCount = cat.criteria?.length || 0;
+            const totalCells = (scoringData.contestants?.length || 0) * criteriaCount;
             const isLocked = cat.is_locked;
             const isSubmitted = submittedCategories.has(cat.id);
+            // Get scored count from tracked state (updated when category loads + when user scores)
             const scored = categoryScoreCounts[cat.id]?.scored || 0;
+            const hasScores = scored > 0;
 
             return (
               <button
                 key={cat.id}
                 onClick={() => handleSelectCategory(cat)}
                 disabled={isLocked}
-                aria-label={`${cat.name}: ${isSubmitted ? 'Submitted' : isLocked ? 'Locked' : scored > 0 ? `Draft ${scored}/${criteriaCount}` : 'Not started'}`}
+                aria-label={`${cat.name}: ${isSubmitted ? 'Submitted' : isLocked ? 'Locked' : hasScores ? `Draft ${Math.round((scored / totalCells) * 100)}%` : 'Not started'}`}
                 className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation ${
                   isSubmitted
                     ? 'border-green-500/30 bg-green-500/10 cursor-pointer hover:shadow-md active:scale-[0.98]'
@@ -289,8 +321,31 @@ export default function JudgeDashboard() {
                     <span className="text-green-500 text-xs font-medium">✓ Submitted (View)</span>
                   ) : isLocked ? (
                     <span className="text-[var(--color-text-muted)] text-xs font-medium">🔒 Locked</span>
-                  ) : scored > 0 ? (
-                    <span className="text-[var(--color-cta)] text-xs font-medium">Draft ({scored}/{criteriaCount})</span>
+                  ) : hasScores && totalCells > 0 ? (
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const percent = Math.round((scored / totalCells) * 100);
+                        const getColor = (p) => {
+                          if (p >= 100) return 'bg-green-500';
+                          if (p >= 67) return 'bg-green-400';
+                          if (p >= 34) return 'bg-yellow-500';
+                          return 'bg-red-500';
+                        };
+                        return (
+                          <>
+                            <div className="w-20 h-2 bg-[var(--color-bg)] rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-300 ${getColor(percent)}`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium whitespace-nowrap">
+                              {percent}%
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
                   ) : (
                     <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
                   )}
