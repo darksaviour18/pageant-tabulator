@@ -83,6 +83,23 @@ export async function markScoreSynced(id) {
 }
 
 /**
+ * Mark a score as synced by composite key.
+ *
+ * @param {number} judgeId
+ * @param {number} contestantId
+ * @param {number} criteriaId
+ */
+export async function markScoreSyncedByComposite(judgeId, contestantId, criteriaId) {
+  const existing = await db.scores
+    .where('[judgeId+contestantId+criteriaId]')
+    .equals([judgeId, contestantId, criteriaId])
+    .first();
+  if (existing) {
+    await db.scores.update(existing.id, { synced: true });
+  }
+}
+
+/**
  * Mark scores as submitted for a judge + category.
  *
  * @param {{ judgeId: number, categoryId: number }} data

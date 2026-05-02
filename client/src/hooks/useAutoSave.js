@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { saveScore, markScoreSynced, getUnsyncedScores, db } from '../db';
-import { scoresAPI } from '../api';
+import { saveScore, markScoreSyncedByComposite, getUnsyncedScores, db } from '../db';
+import { scoresAPI, scoringAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 
 const SYNC_DEBOUNCE_MS = 1000;
@@ -48,29 +48,27 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
 
     try {
       const res = await scoresAPI.batchSubmitScores(batch);
-      console.log('[useAutoSave] Batch sync result:', res.data);
-      
-      // Mark all scores as synced after successful batch
-      if (res.data?.saved > 0) {
-        for (const entry of batch) {
-          await markScoreSyncedByComposite(
-            judgeId,
-            entry.contestant_id,
-            entry.criteria_id
-          );
+
+      // Build a set of indices that failed so we can skip them
+      const failedIndices = new Set((res.data?.errors || []).map(e => e.index));
+
+      // Mark only successfully saved entries as synced, and remove only them from the queue
+      for (let i = 0; i < batch.length; i++) {
+        if (failedIndices.has(i)) {
+          // This entry failed — leave it in the queue for retry on next sync
+          continue;
         }
+        const entry = batch[i];
+        const key = `${entry.contestant_id}:${entry.criteria_id}`;
+        queueRef.current.delete(key);
+        await markScoreSyncedByComposite(judgeId, entry.contestant_id, entry.criteria_id);
       }
-      
-      // Clear sync status for all cells that were syncing
+
       setSyncStatus({});
-      
-      // Even if some entries fail, clear the queue to avoid stuck state
-      // The sync will retry on next change
-      queueRef.current.clear();
       setRefetchKey((k) => k + 1);
     } catch (err) {
-      console.warn('[useAutoSave] Batch sync failed:', err);
-      // Queue is NOT cleared on failure — scores remain pending for next retry
+      console.warn('[useAutoSave] Batch sync failed (network/server error):', err);
+      // Queue is NOT cleared — all entries remain pending for retry
     } finally {
       syncingRef.current = false;
     }
