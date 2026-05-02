@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { CheckCircle2, CircleDashed, AlertCircle } from 'lucide-react';
 
 /**
@@ -21,6 +21,14 @@ export default function ScoreCell({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? '');
   const inputRef = useRef(null);
+
+  // Sync draft with external value changes when the cell is not being edited.
+  // This handles conflict resolution where the parent replaces all scores at once.
+  useEffect(() => {
+    if (!editing) {
+      setDraft(value ?? '');
+    }
+  }, [value, editing]);
 
   const isValid = draft === '' || (draft >= minScore && draft <= maxScore);
   const isError = draft !== '' && !isValid;
