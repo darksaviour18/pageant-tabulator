@@ -186,7 +186,6 @@ export default function AdminMonitor() {
   }, [onEvent]);
 
   const handleUnlock = useCallback(async (judgeId, judgeName, categoryId, categoryName) => {
-    console.log('[DEBUG] handleUnlock STARTED, calling setConfirmDialog...');
     setConfirmDialog({
       open: true,
       title: 'Unlock Category',
@@ -194,15 +193,11 @@ export default function AdminMonitor() {
       confirmLabel: 'Unlock',
       variant: 'default',
       onConfirm: async () => {
-        console.log('[DEBUG] onConfirm triggered for unlock - THIS IS THE CONFIRM BUTTON CLICK');
         setConfirmDialog(null);
         const key = `${judgeId}:${categoryId}`;
         setUnlocking(key);
-        console.log(`[DEBUG] handleUnlock: judgeId=${judgeId}, categoryId=${categoryId}, key=${key}`);
         try {
-          console.log('[DEBUG] About to call unlockCategory API...');
           const res = await submissionsAPI.unlockCategory(judgeId, categoryId);
-          console.log('[DEBUG] unlockCategory API SUCCESS:', res.data);
           setProgress((prev) => ({
             ...prev,
             [key]: { ...(prev[key] || {}), submitted: false },
@@ -210,7 +205,6 @@ export default function AdminMonitor() {
           setUnlockMsg(`Unlocked "${categoryName}" for ${judgeName}`);
           showMessage(`Unlocked "${categoryName}" for ${judgeName}`);
         } catch (err) {
-          console.error('[DEBUG] unlockCategory API FAILED:', err.response?.data || err.message);
           const errMsg = err.response?.data?.error || 'Failed to unlock';
           setUnlockMsg(errMsg);
           showMessage(errMsg);
@@ -371,14 +365,7 @@ export default function AdminMonitor() {
                           </button>
                           {p.submitted && (
                             <button
-                              onClick={() => {
-                                console.log('[DEBUG] Unlock button CLICKED:', { judgeId: judge.id, categoryId: cat.id, submitted: p.submitted, unlocking, key, isDisabled: unlocking === key });
-                                try {
-                                  handleUnlock(judge.id, judge.name, cat.id, cat.name);
-                                } catch (e) {
-                                  console.error('[DEBUG] Error in handleUnlock:', e);
-                                }
-                              }}
+                              onClick={() => handleUnlock(judge.id, judge.name, cat.id, cat.name)}}
                               disabled={unlocking === key}
                               className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-cta)] transition-colors disabled:opacity-50"
                               title="Unlock sheet for re-editing"

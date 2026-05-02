@@ -57,12 +57,9 @@ export default function JudgeDashboard() {
 
       // 10.2.7: Initialize submitted categories from server
       try {
-        console.log('[DEBUG] Fetching submitted categories for judge:', session.judgeId, 'event:', session.eventId);
         const subRes = await submissionsAPI.getByJudgeAndEvent(session.judgeId, session.eventId);
-        console.log('[DEBUG] Submitted categories API response:', subRes.data);
         if (subRes.data?.submittedCategories) {
           setSubmittedCategories(new Set(subRes.data.submittedCategories));
-          console.log('[DEBUG] Set submittedCategories to:', subRes.data.submittedCategories);
         }
         // If any categories are already unlocked by admin, set unlockedCategory
         if (subRes.data?.unlockedCategories?.length > 0) {

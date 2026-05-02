@@ -45,7 +45,6 @@ router.post('/', (req, res, next) => {
     const io = getIo(req);
     if (io) {
       io.to('admins').emit('category_submitted', { judgeId: judge_id, categoryId: category_id });
-      console.log(`[DEBUG] REST: Emitted category_submitted to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId: judge_id, categoryId: category_id });
     }
 
     return res.status(201).json(submission);
@@ -60,7 +59,6 @@ router.post('/', (req, res, next) => {
  */
 router.post('/unlock', verifyAdmin, async (req, res, next) => {
   const { judge_id, category_id } = req.body;
-  console.log(`[DEBUG] Unlock endpoint called: judge_id=${judge_id}, category_id=${category_id}`);
 
   if (!judge_id || !category_id) {
     return res.status(400).json({ error: 'judge_id and category_id are required' });
@@ -72,12 +70,10 @@ router.post('/unlock', verifyAdmin, async (req, res, next) => {
     db.prepare(
       `UPDATE category_submissions SET unlocked_by_admin = 1 WHERE judge_id = ? AND category_id = ?`
     ).run(judge_id, category_id);
-    console.log('[DEBUG] Database updated: unlocked_by_admin = 1');
 
     const submission = db
       .prepare('SELECT * FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judge_id, category_id);
-    console.log('[DEBUG] Submission after unlock:', submission);
 
     // 10.1.5: Audit log — category unlocked
     const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
@@ -88,16 +84,12 @@ router.post('/unlock', verifyAdmin, async (req, res, next) => {
     // Notify the specific judge that their sheet was unlocked
     const io = getIo(req);
     if (io) {
-      // Find the judge's socket and notify
-      console.log('[DEBUG] Calling notifySheetUnlocked...');
       notifySheetUnlocked(io, judge_id, category_id);
-    } else {
-      console.log('[DEBUG] io is null, skipping notification');
     }
 
     return res.json(submission || { judge_id, category_id, unlocked_by_admin: 1 });
   } catch (err) {
-    console.error('[DEBUG] Unlock endpoint error:', err);
+    console.error('Unlock endpoint error:', err);
     next(err);
   }
 });

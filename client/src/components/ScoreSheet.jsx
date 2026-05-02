@@ -199,10 +199,6 @@ export default function ScoreSheet({
           const syncing = isSyncing(contestant.id, crit.id);
           const unsaved = isUnsaved(contestant.id, crit.id);
           const saved = value !== null && !unsaved && !syncing;
-          
-          // DEBUG
-          const key = `${contestant.id}:${crit.id}`;
-          const inQueue = false; // Can't access queueRef here, but syncing should tell us
 
           return (
             <ScoreCell
