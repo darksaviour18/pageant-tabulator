@@ -106,7 +106,7 @@ export function SocketProvider({ children }) {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, connected, lastSync, reconnectCount, onEvent, emit }}>
+    <SocketContext.Provider value={{ connected, lastSync, reconnectCount, onEvent, emit }}>
       {children}
     </SocketContext.Provider>
   );
