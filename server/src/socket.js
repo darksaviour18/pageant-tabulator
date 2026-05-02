@@ -232,9 +232,7 @@ export function setupSocketHandlers(io, app) {
       if (!contestantId || !criteriaId || !categoryId || score == null) {
         return;
       }
-
-      broadcastScoreUpdate(io, judgeId, contestantId, criteriaId, categoryId, score);
-      broadcastJudgeProgress(io, judgeId, conn.eventId, categoryId);
+      // No broadcast here — the REST POST /api/scores endpoint handles broadcasting.
     });
 
     // --- Category Submission ---
@@ -254,9 +252,7 @@ export function setupSocketHandlers(io, app) {
         return; // Judge trying to submit for another judge
       }
 
-      io.to('admins').emit('category_submitted', { judgeId, categoryId });
-      
-      // Broadcast updated progress
+      // Broadcast updated progress (category_submitted is emitted by the REST endpoint)
       const eventId = conn.eventId;
       if (eventId) {
         broadcastJudgeProgress(io, judgeId, eventId, categoryId);
@@ -279,6 +275,11 @@ export function setupSocketHandlers(io, app) {
         const socket = io.sockets.sockets.get(socketId);
         if (socket) {
           socket.emit('connection_lost', { reason: 'heartbeat_timeout' });
+          // Disconnect after notifying — the 'disconnect' handler will clean up connectedJudges
+          socket.disconnect(true);
+        } else {
+          // Socket object is gone but entry is still in map — remove it
+          connectedJudges.delete(socketId);
         }
       }
     }
