@@ -280,13 +280,19 @@ export function cleanupSocketHandlers() {
  * Helper: notify a specific judge that their sheet was unlocked.
  */
 export function notifySheetUnlocked(io, judgeId, categoryId) {
-  // Find the socket for this judge
+  console.log(`[DEBUG] notifySheetUnlocked called: judgeId=${judgeId} (type: ${typeof judgeId}), categoryId=${categoryId}`);
+  console.log(`[DEBUG] Connected judges:`, Array.from(connectedJudges.entries()).map(([id, c]) => ({ id, judgeId: c.judgeId, type: typeof c.judgeId })));
+  
+  // Find the socket for this judge - ensure type match
+  const judgeIdNum = Number(judgeId);
   for (const [socketId, conn] of connectedJudges.entries()) {
-    if (conn.judgeId === judgeId) {
+    if (conn.judgeId === judgeIdNum) {
+      console.log(`[DEBUG] Found judge socket ${socketId}, emitting sheet_unlocked`);
       io.to(socketId).emit('sheet_unlocked', { judgeId, categoryId });
       break;
     }
   }
+  console.log('[DEBUG] notifySheetUnlocked complete');
 }
 
 /**

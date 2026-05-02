@@ -25,6 +25,7 @@ export default function ScoreSheet({
   onScoreChange,
   onScoreSaved,
   isSubmitted: isSubmittedProp,
+  isUnlocked: isUnlockedProp = false,
 }) {
   const { onEvent } = useSocket();
   const { isDark } = useTheme();
@@ -51,7 +52,9 @@ export default function ScoreSheet({
     { serverScores, refetchKey }
   );
 
-  const isReadOnly = (isSubmittedProp !== undefined ? isSubmittedProp : isSubmitted) || category.is_locked;
+  // Read-only if: submitted AND NOT unlocked, OR category is locked by admin
+  const isSubmittedVal = isSubmittedProp !== undefined ? isSubmittedProp : isSubmitted;
+  const isReadOnly = (isSubmittedVal && !isUnlockedProp) || category.is_locked;
   const criteria = category.criteria || [];
 
   // Reset sync status when category becomes unlocked (e.g., after admin unlock)
@@ -286,7 +289,7 @@ export default function ScoreSheet({
           )}
           {effectiveReadOnly && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--color-bg-subtle)] text-[var(--color-text-muted)]">
-              {isSubmitted ? 'Submitted' : 'Locked by Admin'}
+              {isSubmitted && isUnlockedProp ? 'Submitted (Unlocked - You can edit)' : isSubmitted ? 'Submitted' : 'Locked by Admin'}
             </span>
           )}
           <button

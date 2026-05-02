@@ -56,9 +56,16 @@ export default function JudgeDashboard() {
 
       // 10.2.7: Initialize submitted categories from server
       try {
+        console.log('[DEBUG] Fetching submitted categories for judge:', session.judgeId, 'event:', session.eventId);
         const subRes = await submissionsAPI.getByJudgeAndEvent(session.judgeId, session.eventId);
+        console.log('[DEBUG] Submitted categories API response:', subRes.data);
         if (subRes.data?.submittedCategories) {
           setSubmittedCategories(new Set(subRes.data.submittedCategories));
+          console.log('[DEBUG] Set submittedCategories to:', subRes.data.submittedCategories);
+        }
+        // If any categories are already unlocked by admin, set unlockedCategory
+        if (subRes.data?.unlockedCategories?.length > 0) {
+          setUnlockedCategory(subRes.data.unlockedCategories[0]);
         }
       } catch (err) {
         console.error('Failed to load submission status:', err);
@@ -71,11 +78,9 @@ export default function JudgeDashboard() {
   // Listen for admin unlock notifications
   useEffect(() => {
     const unsub = onEvent('sheet_unlocked', (data) => {
-      setSubmittedCategories((prev) => {
-        const next = new Set(prev);
-        next.delete(data.categoryId);
-        return next;
-      });
+      console.log('[DEBUG] Judge received sheet_unlocked event:', data);
+      // Don't remove from submittedCategories - keep showing as "Submitted"
+      // Just set unlockedCategory to show the "You can now edit" banner
       setUnlockedCategory(data.categoryId);
       // If currently viewing this category, re-select to refresh
       if (selectedCategory?.id === data.categoryId) {
@@ -275,6 +280,7 @@ export default function JudgeDashboard() {
             contestants={scoringData.contestants}
             serverScores={categoryScores}
             isSubmitted={submittedCategories.has(selectedCategory.id)}
+            isUnlocked={selectedCategory.id === unlockedCategory || selectedCategory._unlocked}
             onBack={handleBackToCategories}
             onSubmit={handleSubmitCategory}
             onContestantsChange={handleContestantsChange}

@@ -60,6 +60,7 @@ router.post('/', (req, res, next) => {
  */
 router.post('/unlock', verifyAdmin, async (req, res, next) => {
   const { judge_id, category_id } = req.body;
+  console.log(`[DEBUG] Unlock endpoint called: judge_id=${judge_id}, category_id=${category_id}`);
 
   if (!judge_id || !category_id) {
     return res.status(400).json({ error: 'judge_id and category_id are required' });
@@ -71,10 +72,12 @@ router.post('/unlock', verifyAdmin, async (req, res, next) => {
     db.prepare(
       `UPDATE category_submissions SET unlocked_by_admin = 1 WHERE judge_id = ? AND category_id = ?`
     ).run(judge_id, category_id);
+    console.log('[DEBUG] Database updated: unlocked_by_admin = 1');
 
     const submission = db
       .prepare('SELECT * FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judge_id, category_id);
+    console.log('[DEBUG] Submission after unlock:', submission);
 
     // 10.1.5: Audit log — category unlocked
     const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(judge_id);
@@ -86,11 +89,15 @@ router.post('/unlock', verifyAdmin, async (req, res, next) => {
     const io = getIo(req);
     if (io) {
       // Find the judge's socket and notify
+      console.log('[DEBUG] Calling notifySheetUnlocked...');
       notifySheetUnlocked(io, judge_id, category_id);
+    } else {
+      console.log('[DEBUG] io is null, skipping notification');
     }
 
     return res.json(submission || { judge_id, category_id, unlocked_by_admin: 1 });
   } catch (err) {
+    console.error('[DEBUG] Unlock endpoint error:', err);
     next(err);
   }
 });
@@ -115,16 +122,21 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
       .prepare('SELECT category_id, submitted, submitted_at, unlocked_by_admin FROM category_submissions WHERE judge_id = ?')
       .all(parseInt(judgeId, 10));
 
-    // Map to category IDs that are submitted
+    // Map to category IDs - include ALL submitted (even if unlocked by admin)
     const submittedSet = new Set();
+    const unlockedSet = new Set();
     for (const sub of submissions) {
       if (sub.submitted) {
         submittedSet.add(sub.category_id);
+        if (sub.unlocked_by_admin) {
+          unlockedSet.add(sub.category_id);
+        }
       }
     }
 
     return res.json({
       submittedCategories: Array.from(submittedSet),
+      unlockedCategories: Array.from(unlockedSet),
     });
   } catch (err) {
     next(err);

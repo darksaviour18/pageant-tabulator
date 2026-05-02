@@ -93,9 +93,13 @@ router.get('/:judgeId/event/:eventId/category/:categoryId', (req, res, next) => 
       .prepare('SELECT submitted, submitted_at, unlocked_by_admin FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judgeId, categoryId);
 
+    // submitted = true only if submitted AND not unlocked by admin
+    // If unlocked by admin, submitted = false (category is editable)
+    const submitted = submission?.submitted && !submission?.unlocked_by_admin;
+
     return res.json({
       scores,
-      submitted: !!submission?.submitted,
+      submitted,
       submittedAt: submission?.submitted_at,
       unlockedByAdmin: !!submission?.unlocked_by_admin,
     });
