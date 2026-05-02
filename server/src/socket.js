@@ -109,7 +109,6 @@ function broadcastJudgeProgress(io, judgeId, eventId, categoryId) {
     total: criteriaCount,
     submitted: !!submission?.submitted,
   });
-  console.log(`[DEBUG] Emitted judge_progress to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId, categoryId, scored: scoredCount, total: criteriaCount });
 }
 
 /**
@@ -123,7 +122,6 @@ function broadcastScoreUpdate(io, judgeId, contestantId, criteriaId, categoryId,
     category_id: categoryId,
     score,
   });
-  console.log(`[DEBUG] Emitted score_updated to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId, categoryId, contestantId, criteriaId, score });
 }
 
 /**
@@ -145,6 +143,30 @@ export function setupSocketHandlers(io, app) {
       const { judgeId, eventId, role = 'judge' } = data;
 
       if (role === 'admin') {
+        // Re-verify JWT — the handshake middleware already checked on connect,
+        // but we must check again because any client can send role:'admin'.
+        let jwtToken = socket.handshake.auth.token;
+        if (!jwtToken && socket.handshake.headers.cookie) {
+          const cookies = cookie.parse(socket.handshake.headers.cookie);
+          jwtToken = cookies.admin_token;
+        }
+        if (!jwtToken) {
+          socket.emit('authenticated', { success: false, error: 'Admin authentication failed' });
+          socket.disconnect();
+          return;
+        }
+        try {
+          const decoded = jwt.verify(jwtToken, JWT_SECRET);
+          if (decoded.role !== 'admin') {
+            socket.emit('authenticated', { success: false, error: 'Admin authentication failed' });
+            socket.disconnect();
+            return;
+          }
+        } catch {
+          socket.emit('authenticated', { success: false, error: 'Admin authentication failed' });
+          socket.disconnect();
+          return;
+        }
         socket.join('admins');
         connectedAdmins.set(socket.id, { role: 'admin', authenticatedAt: Date.now() });
         socket.emit('authenticated', { success: true, role: 'admin' });
@@ -233,7 +255,6 @@ export function setupSocketHandlers(io, app) {
       }
 
       io.to('admins').emit('category_submitted', { judgeId, categoryId });
-      console.log(`[DEBUG] Emitted category_submitted to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId, categoryId });
       
       // Broadcast updated progress
       const eventId = conn.eventId;
@@ -280,19 +301,13 @@ export function cleanupSocketHandlers() {
  * Helper: notify a specific judge that their sheet was unlocked.
  */
 export function notifySheetUnlocked(io, judgeId, categoryId) {
-  console.log(`[DEBUG] notifySheetUnlocked called: judgeId=${judgeId} (type: ${typeof judgeId}), categoryId=${categoryId}`);
-  console.log(`[DEBUG] Connected judges:`, Array.from(connectedJudges.entries()).map(([id, c]) => ({ id, judgeId: c.judgeId, type: typeof c.judgeId })));
-  
-  // Find the socket for this judge - ensure type match
   const judgeIdNum = Number(judgeId);
   for (const [socketId, conn] of connectedJudges.entries()) {
     if (conn.judgeId === judgeIdNum) {
-      console.log(`[DEBUG] Found judge socket ${socketId}, emitting sheet_unlocked`);
       io.to(socketId).emit('sheet_unlocked', { judgeId, categoryId });
       break;
     }
   }
-  console.log('[DEBUG] notifySheetUnlocked complete');
 }
 
 /**
