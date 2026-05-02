@@ -36,6 +36,7 @@ export default function ScoreSheet({
   const [selectedContestant, setSelectedContestant] = useState(null);
   const [contestantPhotos, setContestantPhotos] = useState({});
   const [loadingPhotos, setLoadingPhotos] = useState(true);
+  const contestantPhotosRef = useRef({}); // always holds the latest photo map for cleanup
 
   // Auto-save: write to IndexedDB immediately, debounce POST to server
   // Must come BEFORE useOfflineScores because refetchKey is used below
@@ -127,13 +128,17 @@ export default function ScoreSheet({
           // No photo
         }
       }
+      // Update both state (for rendering) and ref (for cleanup)
+      contestantPhotosRef.current = photos;
       setContestantPhotos(photos);
       setLoadingPhotos(false);
     };
     
     loadPhotos();
     return () => {
-      Object.values(contestantPhotos).forEach(URL.revokeObjectURL);
+      // Revoke using the ref — always reflects the latest loaded photos, not a stale closure
+      Object.values(contestantPhotosRef.current).forEach(url => URL.revokeObjectURL(url));
+      contestantPhotosRef.current = {};
     };
   }, [eventId, contestants]);
 
