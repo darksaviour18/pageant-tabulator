@@ -21,7 +21,7 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     // Check if we're on an admin route and have admin session
-    const isAdmin = window.location.pathname === '/' || window.location.pathname.startsWith('/');
+    const isAdmin = window.location.pathname === '/' || window.location.pathname.startsWith('/admin');
     const hasAdminSession = checkAdminSession();
 
     const socket = io(SOCKET_URL, {
@@ -46,9 +46,8 @@ export function SocketProvider({ children }) {
     });
 
     socket.on('authenticated', (data) => {
-      console.log('[Socket] Admin authenticated:', data.success);
-      if (data.success) {
-        // Start heartbeat
+      if (data.success && data.role === 'admin') {
+        // Only admin connections use heartbeat from this context
         if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = setInterval(() => {
           socket.emit('heartbeat');
