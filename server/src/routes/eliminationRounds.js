@@ -8,7 +8,7 @@ const router = Router();
  * POST /api/elimination-rounds
  * Create a new elimination round with qualifiers.
  */
-router.post('/', (req, res, next) => {
+router.post('/', verifyAdmin, (req, res, next) => {
   const { event_id, round_name, round_order, contestant_count, based_on_report_id, qualifiers } = req.body;
 
   if (!event_id || !round_name || round_order == null || contestant_count == null) {
@@ -28,27 +28,28 @@ router.post('/', (req, res, next) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Create elimination round
-    const roundResult = db
-      .prepare(
-        'INSERT INTO elimination_rounds (event_id, round_name, round_order, contestant_count, based_on_report_id) VALUES (?, ?, ?, ?, ?)'
-      )
-      .run(event_id, round_name, round_order, contestant_count, based_on_report_id || null);
-
-    const roundId = roundResult.lastInsertRowid;
-
-    // Insert qualifiers
-    const insertQualifier = db.prepare(
-      'INSERT INTO round_qualifiers (round_id, contestant_id, qualified_rank) VALUES (?, ?, ?)'
-    );
-
+    // Insert round and qualifiers in a single transaction to prevent orphans
     const dbTx = db.transaction(() => {
+      const roundResult = db
+        .prepare(
+          'INSERT INTO elimination_rounds (event_id, round_name, round_order, contestant_count, based_on_report_id) VALUES (?, ?, ?, ?, ?)'
+        )
+        .run(event_id, round_name, round_order, contestant_count, based_on_report_id || null);
+
+      const roundId = roundResult.lastInsertRowid;
+
+      const insertQualifier = db.prepare(
+        'INSERT INTO round_qualifiers (round_id, contestant_id, qualified_rank) VALUES (?, ?, ?)'
+      );
+
       for (const q of qualifiers) {
         insertQualifier.run(roundId, q.contestant_id, q.rank);
       }
+
+      return roundId;
     });
 
-    dbTx();
+    const roundId = dbTx();
 
     // Fetch created round with qualifiers
     const round = db.prepare('SELECT * FROM elimination_rounds WHERE id = ?').get(roundId);
