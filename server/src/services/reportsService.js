@@ -190,7 +190,6 @@ export const reportsService = {
 
     // Rank contestants by weighted total (higher = better)
     const ranked = Object.values(contestantWeightedScores)
-      .filter(c => Object.keys(c.category_scores).length > 0)
       .sort((a, b) => {
         if (b.weighted_total !== a.weighted_total) return b.weighted_total - a.weighted_total;
         return a.number - b.number; // Tie-break by contestant number

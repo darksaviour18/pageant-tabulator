@@ -116,6 +116,24 @@ export async function markCategorySubmitted({ judgeId, categoryId }) {
 }
 
 /**
+ * Mark a category as unlocked by admin in local IndexedDB.
+ * This keeps local state consistent when the server unlocks a submitted category.
+ *
+ * @param {number} judgeId
+ * @param {number} categoryId
+ */
+export async function markCategoryUnlocked(judgeId, categoryId) {
+  const existing = await db.submissions
+    .where('[judgeId+categoryId]')
+    .equals([judgeId, categoryId])
+    .first();
+  if (existing) {
+    await db.submissions.update(existing.id, { submitted: false });
+  }
+  // If no local record exists, there is nothing to unset — do nothing.
+}
+
+/**
  * Check if a judge has submitted a category.
  *
  * @param {number} judgeId

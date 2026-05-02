@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, ChevronRight, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
 import { scoringAPI, submissionsAPI, scoresAPI } from '../api';
+import { markCategoryUnlocked } from '../db';
 import ScoreSheet from '../components/ScoreSheet';
 import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
@@ -78,10 +79,13 @@ export default function JudgeDashboard() {
   // Listen for admin unlock notifications
   useEffect(() => {
     const unsub = onEvent('sheet_unlocked', (data) => {
-      console.log('[DEBUG] Judge received sheet_unlocked event:', data);
-      // Don't remove from submittedCategories - keep showing as "Submitted"
-      // Just set unlockedCategory to show the "You can now edit" banner
       setUnlockedCategory(data.categoryId);
+      // Keep IndexedDB in sync so isCategorySubmitted() returns false after unlock
+      if (session?.judgeId) {
+        markCategoryUnlocked(session.judgeId, data.categoryId).catch(err =>
+          console.error('[JudgeDashboard] Failed to update IndexedDB on unlock:', err)
+        );
+      }
       // If currently viewing this category, re-select to refresh
       if (selectedCategory?.id === data.categoryId) {
         setSelectedCategory((prev) => prev ? { ...prev, _unlocked: true } : null);
