@@ -22,35 +22,34 @@ db.version(2).stores({
  * @returns {Promise<number>} The saved score's ID
  */
 export async function saveScore({ judgeId, contestantId, criteriaId, categoryId, score }) {
-  // If score is null/undefined, store as null to mark as cleared (not delete)
-  // This allows getScore to return null immediately
-  const scoreObj = {
-    judgeId,
-    contestantId,
-    criteriaId,
-    categoryId,
-    score, // could be null for cleared
-    synced: false,
-    updatedAt: Date.now(),
-  };
+  // Wrap in a Dexie transaction so the read and write are atomic.
+  // This prevents a TOCTOU race where two rapid calls both see "not found"
+  // and both insert, creating duplicate rows.
+  return db.transaction('rw', db.scores, async () => {
+    const existing = await db.scores
+      .where('[judgeId+contestantId+criteriaId]')
+      .equals([judgeId, contestantId, criteriaId])
+      .first();
 
-  // Use atomic transaction to avoid race condition
-  // First try to find and update, if not found will add
-  const existing = await db.scores
-    .where('[judgeId+contestantId+criteriaId]')
-    .equals([judgeId, contestantId, criteriaId])
-    .first();
+    if (existing) {
+      await db.scores.update(existing.id, {
+        score,
+        categoryId, // keep in sync in case it changes
+        synced: false,
+        updatedAt: Date.now(),
+      });
+      return existing.id;
+    }
 
-  if (existing) {
-    await db.scores.update(existing.id, { score, synced: false, updatedAt: Date.now() });
-    return existing.id;
-  }
-
-  // Use put() with the composite index for atomic upsert
-  // The composite index [judgeId+contestantId+criteriaId] ensures uniqueness
-  return db.scores.put({
-    ...scoreObj,
-    // Let Dexie handle the id - will generate new or update existing
+    return db.scores.add({
+      judgeId,
+      contestantId,
+      criteriaId,
+      categoryId,
+      score,
+      synced: false,
+      updatedAt: Date.now(),
+    });
   });
 }
 
