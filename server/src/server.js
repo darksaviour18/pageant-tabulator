@@ -24,6 +24,7 @@ import scoresRouter from './routes/scores.js';
 import submissionsRouter from './routes/submissions.js';
 import reportsRouter from './routes/reports.js';
 import adminAuthRouter from './routes/adminAuth.js';
+import { signJudgeToken } from './routes/adminAuth.js';
 import eliminationRoundsRouter from './routes/eliminationRounds.js';
 import auditLogsRouter from './routes/auditLogs.js';
 import { setupSocketHandlers } from './socket.js';
@@ -71,9 +72,13 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
 // --- Middleware ---
-app.use(cors());
+app.use(cors({
+  origin: CLIENT_ORIGIN,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -90,7 +95,8 @@ app.use((req, _res, next) => {
 // --- Socket.io Setup ---
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: CLIENT_ORIGIN,
+    credentials: true,
     methods: ['GET', 'POST'],
   },
 });
@@ -169,9 +175,12 @@ app.post('/api/auth/judge', async (req, res, next) => {
 
     recordAuthAttempt(event_id, seat_number, true);
 
+    const token = signJudgeToken(judge.id);
+
     return res.json({
       judge,
       event: { id: event.id, name: event.name, status: event.status },
+      token,
     });
   } catch (err) {
     next(err);

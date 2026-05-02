@@ -8,6 +8,21 @@ export const api = axios.create({
   withCredentials: true, // Send httpOnly cookies (JWT)
 });
 
+// Attach judge token to score requests when available
+api.interceptors.request.use((config) => {
+  if (config.url?.startsWith('/scores')) {
+    try {
+      const session = JSON.parse(sessionStorage.getItem('judge_session') || '{}');
+      if (session.token) {
+        config.headers['Authorization'] = `Bearer ${session.token}`;
+      }
+    } catch {
+      // No session — request will be rejected by server
+    }
+  }
+  return config;
+});
+
 // --- Events ---
 export const eventsAPI = {
   create: (name) => api.post('/events', { name }),

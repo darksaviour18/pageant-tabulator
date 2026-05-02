@@ -70,6 +70,7 @@ export default function JudgeLogin() {
           judgeName: res.data.judge.name,
           seatNumber: res.data.judge.seat_number,
           eventName: res.data.event.name,
+          token: res.data.token,
         })
       );
 
