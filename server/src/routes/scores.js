@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db/init.js';
 import { writeAuditLog } from '../services/auditService.js';
 import { invalidateReportCache } from '../services/reportsService.js';
+import { verifyJudge } from './adminAuth.js';
 
 const router = Router();
 
@@ -114,8 +115,13 @@ router.get('/judge/:judgeId', (req, res, next) => {
  * POST /api/scores
  * Save or update a single score.
  */
-router.post('/', (req, res, next) => {
+router.post('/', verifyJudge, (req, res, next) => {
   const { judge_id, contestant_id, criteria_id, category_id, score } = req.body;
+
+  // Verify the authenticated judge matches the judge_id in the body
+  if (req.judgeAuth.judgeId !== judge_id) {
+    return res.status(403).json({ error: 'You can only submit scores for yourself' });
+  }
 
   if (judge_id == null || contestant_id == null || criteria_id == null || category_id == null) {
     return res.status(400).json({ error: 'judge_id, contestant_id, criteria_id, and category_id are required' });
@@ -212,11 +218,19 @@ router.post('/', (req, res, next) => {
  * POST /api/scores/batch
  * Batch save multiple scores. Returns count of saved and any errors.
  */
-router.post('/batch', (req, res, next) => {
+router.post('/batch', verifyJudge, (req, res, next) => {
   const { scores } = req.body;
 
   if (!Array.isArray(scores) || scores.length === 0) {
     return res.status(400).json({ error: 'scores array is required and must not be empty' });
+  }
+
+  // Verify every score entry belongs to the authenticated judge
+  const authenticatedJudgeId = req.judgeAuth.judgeId;
+  for (const s of scores) {
+    if (s.judge_id !== authenticatedJudgeId) {
+      return res.status(403).json({ error: 'You can only submit scores for yourself' });
+    }
   }
 
   try {

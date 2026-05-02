@@ -82,4 +82,35 @@ export function verifyAdmin(req, res, next) {
   }
 }
 
+/**
+ * Sign a short-lived JWT for an authenticated judge.
+ * @param {number} judgeId
+ * @returns {string} signed JWT
+ */
+export function signJudgeToken(judgeId) {
+  return jwt.sign({ role: 'judge', judgeId }, JWT_SECRET, { expiresIn: '12h' });
+}
+
+/**
+ * Middleware: verify judge JWT from Authorization header.
+ * Attaches req.judgeAuth = { judgeId } on success.
+ */
+export function verifyJudge(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Judge authentication required' });
+  }
+  const token = authHeader.slice(7);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'judge') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    req.judgeAuth = { judgeId: decoded.judgeId };
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired judge token' });
+  }
+}
+
 export default router;
