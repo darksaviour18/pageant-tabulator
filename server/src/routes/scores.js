@@ -322,10 +322,13 @@ router.post('/batch', verifyJudge, (req, res, next) => {
       invalidateReportCache(eventId);
     }
 
-    // Broadcast real-time score updates to admins
+    // Broadcast real-time score updates to admins — only for successfully saved entries
     const io = getIo(req);
     if (io && result.saved > 0) {
-      for (const s of scores) {
+      const failedIndices = new Set(result.errors.map(e => e.index));
+      for (let i = 0; i < scores.length; i++) {
+        if (failedIndices.has(i)) continue; // skip entries that failed
+        const s = scores[i];
         io.to('admins').emit('score_updated', {
           judge_id: s.judge_id,
           contestant_id: s.contestant_id,
