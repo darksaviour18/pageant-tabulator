@@ -115,7 +115,7 @@ router.get('/', (req, res, next) => {
  * PATCH /api/contestants/:id
  * Update a contestant's name or status.
  */
-router.patch('/:id', (req, res, next) => {
+router.patch('/:id', verifyAdmin, (req, res, next) => {
   const { id } = req.params;
   const { name, status } = req.body;
 
