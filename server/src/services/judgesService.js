@@ -31,7 +31,7 @@ export const judgesService = {
     const db = getDb();
     return db
       .prepare(
-        'SELECT id, event_id, seat_number, name, pin FROM judges WHERE event_id = ? ORDER BY seat_number'
+        'SELECT id, event_id, seat_number, name FROM judges WHERE event_id = ? ORDER BY seat_number'
       )
       .all(eventId);
   },
