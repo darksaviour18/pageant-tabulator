@@ -195,7 +195,6 @@ router.post('/', (req, res, next) => {
         category_id: saved.category_id,
         score: saved.score,
       });
-      console.log(`[DEBUG] REST: Emitted score_updated to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId: saved.judge_id, categoryId: saved.category_id, score: saved.score });
     }
 
     // Invalidate report cache for this category
@@ -320,7 +319,6 @@ router.post('/batch', (req, res, next) => {
           category_id: s.category_id,
           score: s.score,
         });
-        console.log(`[DEBUG] BATCH: Emitted score_updated to admins. Room size: ${io.sockets.adapter.rooms.get('admins')?.size || 0}, data:`, { judgeId: s.judge_id, categoryId: s.category_id, score: s.score });
       }
     }
 
