@@ -171,8 +171,6 @@ router.get('/saved', (req, res, next) => {
   }
 });
 
-export default router;
-
 /**
  * GET /api/reports/:eventId/category/:categoryId/csv
  * Download category report as CSV file.
@@ -230,3 +228,5 @@ function reportToCsv(report, categoryName) {
 
   return lines.join('\n');
 }
+
+export default router;
