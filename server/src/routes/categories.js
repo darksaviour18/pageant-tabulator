@@ -3,6 +3,7 @@ import { eventsService } from '../services/eventsService.js';
 import { categoriesService } from '../services/categoriesService.js';
 import { verifyAdmin } from './adminAuth.js';
 import { broadcastCategoryLock } from '../socket.js';
+import { getDb } from '../db/init.js';
 
 const router = Router({ mergeParams: true });
 
@@ -28,7 +29,15 @@ router.post('/', verifyAdmin, (req, res, next) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const order = display_order ?? Math.floor(Date.now() / 1000);
+    let order = display_order;
+    if (order == null) {
+      // Auto-assign the next sequential order for this event
+      const db = getDb();
+      const maxRow = db
+        .prepare('SELECT MAX(display_order) as max_order FROM categories WHERE event_id = ?')
+        .get(parseInt(eventId, 10));
+      order = (maxRow?.max_order ?? 0) + 1;
+    }
     const category = categoriesService.create(parseInt(eventId, 10), {
       name: name.trim(),
       display_order: order,
