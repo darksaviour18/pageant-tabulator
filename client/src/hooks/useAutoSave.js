@@ -243,15 +243,5 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
   };
 }
 
-/**
- * Mark a score as synced by looking up via composite key.
- * Dexie doesn't support compound unique indexes well, so we find by fields.
- */
-async function markScoreSyncedByComposite(judgeId, contestantId, criteriaId) {
-  const match = await db.scores
-    .where({ judgeId, contestantId, criteriaId })
-    .first();
-  if (match && !match.synced) {
-    await db.scores.update(match.id, { synced: true });
-  }
-}
+export default useAutoSave;
+

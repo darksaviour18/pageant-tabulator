@@ -365,7 +365,7 @@ export default function AdminMonitor() {
                           </button>
                           {p.submitted && (
                             <button
-                              onClick={() => handleUnlock(judge.id, judge.name, cat.id, cat.name)}}
+                              onClick={() => handleUnlock(judge.id, judge.name, cat.id, cat.name)}
                               disabled={unlocking === key}
                               className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-cta)] transition-colors disabled:opacity-50"
                               title="Unlock sheet for re-editing"
