@@ -22,9 +22,14 @@ export default function JudgeDashboard() {
   const [categoryScores, setCategoryScores] = useState([]);
   const [loadingScores, setLoadingScores] = useState(false);
   const [categoryScoreCounts, setCategoryScoreCounts] = useState({}); // { categoryId: { scored, total } }
+  const [categoryContestants, setCategoryContestants] = useState([]); // contestants for the open category
+  const [categoryContestantCounts, setCategoryContestantCounts] = useState({}); // { catId: number }
+  const [roundNames, setRoundNames] = useState({}); // { roundId: roundName }
   const [allScores, setAllScores] = useState([]); // All scores for progress bars
   const unlockedTimeoutRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const handleSelectCategoryRef = useRef(handleSelectCategory);
+  const selectedCategoryRef = useRef(selectedCategory);
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -73,31 +78,48 @@ export default function JudgeDashboard() {
     fetchAllScores();
   }, [session]);
 
-  // Listen for admin unlock notifications
+  // Keep refs in sync to avoid stale closures in socket listeners
+  useEffect(() => {
+    handleSelectCategoryRef.current = handleSelectCategory;
+  }, [handleSelectCategory]);
+
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory;
+  }, [selectedCategory]);
+
+  // Listen for admin unlock notifications and contestant list changes
   useEffect(() => {
     const unsub = onEvent('sheet_unlocked', (data) => {
       setUnlockedCategory(data.categoryId);
-      // Keep IndexedDB in sync so isCategorySubmitted() returns false after unlock
       if (session?.judgeId) {
         markCategoryUnlocked(session.judgeId, data.categoryId).catch(err =>
           console.error('[JudgeDashboard] Failed to update IndexedDB on unlock:', err)
         );
       }
-      // If currently viewing this category, re-select to refresh
-      if (selectedCategory?.id === data.categoryId) {
+      if (selectedCategoryRef.current?.id === data.categoryId) {
         setSelectedCategory((prev) => prev ? { ...prev, _unlocked: true } : null);
       }
-      // Auto-clear notification after 5s (clean up previous timeout)
       if (unlockedTimeoutRef.current) clearTimeout(unlockedTimeoutRef.current);
       unlockedTimeoutRef.current = setTimeout(() => setUnlockedCategory(null), 5000);
     });
 
-    // Cleanup timeout on unmount
+    const unsubContestants = onEvent('contestants_updated', (data) => {
+      if (selectedCategoryRef.current?.id === data.categoryId) {
+        handleSelectCategoryRef.current(selectedCategoryRef.current);
+      }
+      if (session) {
+        scoringAPI.getContext(session.judgeId, session.eventId)
+          .then(res => setScoringData(res.data))
+          .catch(() => {});
+      }
+    });
+
     return () => {
       unsub();
+      unsubContestants();
       if (unlockedTimeoutRef.current) clearTimeout(unlockedTimeoutRef.current);
     };
-  }, [onEvent, selectedCategory]);
+  }, [onEvent, session]);
 
   const loadScoringContext = async (judgeId, eventId) => {
     // Cancel any in-flight request
@@ -131,22 +153,34 @@ export default function JudgeDashboard() {
       const res = await scoringAPI.getCategoryScores(session.judgeId, session.eventId, cat.id);
       setCategoryScores(res.data.scores || []);
 
-      // 10.2.7: Track submitted status from API response
+      const eligible = res.data.contestants || scoringData?.contestants || [];
+      setCategoryContestants(eligible);
+
+      if (res.data.requiredRoundId && res.data.requiredRoundName) {
+        setRoundNames(prev => ({
+          ...prev,
+          [res.data.requiredRoundId]: res.data.requiredRoundName,
+        }));
+      }
+
       if (res.data.submitted) {
         setSubmittedCategories(prev => new Set([...prev, cat.id]));
       }
 
-      // 10.2.6: Track score count for this category
-      const total = (scoringData.contestants?.length || 0) * (cat.criteria?.length || 0);
-      // Count only non-null scores (not empty)
+      const total = eligible.length * (cat.criteria?.length || 0);
       const scoredCount = (res.data.scores || []).filter(s => s.score != null && s.score !== '').length;
       setCategoryScoreCounts((prev) => ({
         ...prev,
         [cat.id]: { scored: scoredCount, total },
       }));
+      setCategoryContestantCounts(prev => ({
+        ...prev,
+        [cat.id]: eligible.length,
+      }));
     } catch (err) {
       console.error('Failed to load category scores:', err);
       setCategoryScores([]);
+      setCategoryContestants(scoringData?.contestants || []);
     } finally {
       setLoadingScores(false);
     }
@@ -155,6 +189,7 @@ export default function JudgeDashboard() {
   const handleBackToCategories = () => {
     setSelectedCategory(null);
     setCategoryScores([]);
+    setCategoryContestants([]);
   };
 
   const handleContestantsChange = async () => {
@@ -207,8 +242,7 @@ export default function JudgeDashboard() {
   const handleSubmitCategory = async () => {
     if (!session || !selectedCategory) return;
 
-    // Validate all scores are filled
-    const totalCells = (scoringData.contestants?.length || 0) * (selectedCategory.criteria?.length || 0);
+    const totalCells = categoryContestants.length * (selectedCategory.criteria?.length || 0);
     const scoredCells = categoryScoreCounts[selectedCategory.id]?.scored || 0;
 
     if (scoredCells < totalCells) {
@@ -278,7 +312,7 @@ export default function JudgeDashboard() {
             judgeId={session.judgeId}
             eventId={session.eventId}
             category={selectedCategory}
-            contestants={scoringData.contestants}
+            contestants={categoryContestants}
             serverScores={categoryScores}
             isSubmitted={submittedCategories.has(selectedCategory.id)}
             isUnlocked={selectedCategory.id === unlockedCategory || selectedCategory._unlocked}
@@ -355,7 +389,8 @@ export default function JudgeDashboard() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scoringData.categories.map((cat) => {
             const criteriaCount = cat.criteria?.length || 0;
-            const totalCells = (scoringData.contestants?.length || 0) * criteriaCount;
+            const eligibleCount = categoryContestantCounts[cat.id] ?? (scoringData.contestants?.length || 0);
+            const totalCells = eligibleCount * criteriaCount;
             const isLocked = cat.is_locked;
             const isSubmitted = submittedCategories.has(cat.id);
             // Get scored count from all scores (fetched on mount)
@@ -416,6 +451,16 @@ export default function JudgeDashboard() {
                   {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'}
                   {isSubmitted && <span className="ml-2 text-green-500">· Submitted</span>}
                 </div>
+                {cat.required_round_id && (
+                  <div className="mt-1 text-xs font-semibold text-amber-600 flex items-center gap-1">
+                    <span>🏆</span>
+                    <span>
+                      {roundNames[cat.required_round_id]
+                        ? `${roundNames[cat.required_round_id]} only`
+                        : `Finalists only (${eligibleCount} contestants)`}
+                    </span>
+                  </div>
+                )}
                 {isLocked && (
                   <div className="mt-2 text-xs text-[var(--color-text-muted)]">
                     Locked by Admin

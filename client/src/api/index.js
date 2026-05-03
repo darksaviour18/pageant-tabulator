@@ -64,6 +64,8 @@ export const categoriesAPI = {
   getAll: (eventId) => api.get(`/events/${eventId}/categories`),
   update: (eventId, id, data) => api.patch(`/events/${eventId}/categories/${id}`, data),
   delete: (eventId, categoryId) => api.delete(`/events/${eventId}/categories/${categoryId}`),
+  setRequiredRound: (eventId, categoryId, roundId) =>
+    api.patch(`/events/${eventId}/categories/${categoryId}`, { required_round_id: roundId }),
 };
 
 // --- Criteria ---
@@ -116,6 +118,7 @@ export const eliminationRoundsAPI = {
   create: (data) => api.post('/elimination-rounds', data),
   getAll: (eventId) => api.get(`/elimination-rounds?event_id=${eventId}`),
   getQualifiers: (roundId) => api.get(`/elimination-rounds/${roundId}/qualifiers`),
+  updateQualifiers: (roundId, data) => api.patch(`/elimination-rounds/${roundId}/qualifiers`, data),
   delete: (eventId, roundId) => api.delete(`/elimination-rounds/${roundId}?event_id=${eventId}`),
 };
 
