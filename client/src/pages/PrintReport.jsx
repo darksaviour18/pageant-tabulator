@@ -466,11 +466,16 @@ export default function PrintReport() {
         </div>
       )}
 
-      {/* Elimination Rounds — shown after cross-category report */}
-      {reportType === 'cross_category' && report && eventId && (
+      {/* Elimination Rounds — shown for all report types */}
+      {report && eventId && (
         <EliminationRoundManager
           eventId={parseInt(eventId, 10)}
-          reportData={report}
+          reportData={
+            reportType === 'cross_category'
+              ? report
+              : { contestants: report.ranked_contestants }
+          }
+          categories={categories}
           onRoundCreated={handleRoundCreated}
         />
       )}
@@ -641,6 +646,14 @@ function CrossCategoryReport({ report, event, signatureType, customTitle }) {
         </div>
         <p className="text-xs text-slate-400 mt-2">Note: Scores are weighted by category weight. Higher total = better placement.</p>
       </div>
+
+      {report?.filtered_by_rounds?.length > 0 && (
+        <div className="no-print text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg mt-2 mb-4">
+          ℹ This report shows {report.eligible_count} of {report.total_active_count} active contestants.
+          {report.total_active_count - report.eligible_count} contestants were excluded because they did not
+          qualify in all selected categories.
+        </div>
+      )}
 
       <div className="mb-8">
         <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Award className="w-4 h-4" /> Final Rankings</h3>

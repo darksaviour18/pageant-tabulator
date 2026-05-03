@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { eventsAPI, judgesAPI, categoriesAPI, contestantsAPI } from '../api';
+import { eventsAPI, judgesAPI, categoriesAPI, contestantsAPI, eliminationRoundsAPI } from '../api';
 import { submissionsAPI } from '../api';
 import { scoresAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
@@ -65,6 +65,13 @@ export default function AdminMonitor() {
       const contestantsRes = await contestantsAPI.getAll(activeEvent.id, { status: 'active' });
       const contestantCount = contestantsRes.data.length || 0;
 
+      // Fetch rounds to resolve per-category contestant counts
+      const roundsRes = await eliminationRoundsAPI.getAll(activeEvent.id);
+      const roundContestantCount = {};
+      for (const round of (roundsRes.data || [])) {
+        roundContestantCount[round.id] = round.contestant_count;
+      }
+
       // Build progress for each judge×category
       const initialProgress = {};
       const initialLockStatus = {};
@@ -84,7 +91,10 @@ export default function AdminMonitor() {
           const categoryProgress = {};
           for (const cat of categoriesRes.data) {
             const criteriaCount = cat.criteria?.length || 0;
-            const total = contestantCount * criteriaCount;
+            const effectiveCount = cat.required_round_id
+              ? (roundContestantCount[cat.required_round_id] ?? contestantCount)
+              : contestantCount;
+            const total = effectiveCount * criteriaCount;
             const key = `${judge.id}:${cat.id}`;
 
             // Count non-null scores for this category
@@ -108,7 +118,10 @@ export default function AdminMonitor() {
           for (const cat of categoriesRes.data) {
             const key = `${judge.id}:${cat.id}`;
             const criteriaCount = cat.criteria?.length || 0;
-            emptyProgress[key] = { scored: 0, total: contestantCount * criteriaCount, submitted: false };
+            const effectiveCount = cat.required_round_id
+              ? (roundContestantCount[cat.required_round_id] ?? contestantCount)
+              : contestantCount;
+            emptyProgress[key] = { scored: 0, total: effectiveCount * criteriaCount, submitted: false };
           }
           return emptyProgress;
         }
