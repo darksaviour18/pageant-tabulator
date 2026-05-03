@@ -490,6 +490,59 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
                       )}
                     </div>
 
+                    {/* Qualifying Categories */}
+                    {categories.length > 0 && (
+                      <div className="border-t border-slate-100 pt-3">
+                        <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Qualifying Categories
+                        </h5>
+                        <p className="text-xs text-slate-400 mb-2">
+                          These categories determine which contestants advance to this round.
+                        </p>
+                        <div className="space-y-1">
+                          {(() => {
+                            const qualifyingIds = Array.isArray(round.qualifying_category_ids) ? round.qualifying_category_ids
+                              : (typeof round.qualifying_category_ids === 'string' ? JSON.parse(round.qualifying_category_ids) : []);
+                            return categories.map(cat => {
+                              const isChecked = qualifyingIds.includes(cat.id);
+                              return (
+                                <label key={cat.id} className={`flex items-center gap-2 text-sm px-2 py-1.5 rounded transition-colors ${
+                                  linkingBusy ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-slate-50'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    disabled={linkingBusy}
+                                    onChange={async () => {
+                                      setLinkingBusy(true);
+                                      const next = isChecked
+                                        ? qualifyingIds.filter(id => id !== cat.id)
+                                        : [...qualifyingIds, cat.id];
+                                      if (next.length === 0) {
+                                        setError('At least one qualifying category is required.');
+                                        return;
+                                      }
+                                      try {
+                                        await eliminationRoundsAPI.update(round.id, { qualifying_category_ids: next });
+                                        await loadRounds();
+                                      } catch (err) {
+                                        console.error('Failed to update qualifying categories:', err);
+                                      } finally {
+                                        setLinkingBusy(false);
+                                      }
+                                    }}
+                                    className="text-amber-600 focus:ring-amber-500"
+                                  />
+                                  <span className={isChecked ? 'text-slate-900 font-medium' : 'text-slate-600'}>{cat.name}</span>
+                                  {isChecked && <span className="text-xs text-amber-600 ml-auto">✓ Qualifier</span>}
+                                </label>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
                     {categories.length > 0 && (
                       <div className="border-t border-slate-100 pt-3">
                         <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
