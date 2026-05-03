@@ -9,24 +9,45 @@ export default function RoundsManager() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    eventsAPI.getAll().then((res) => setEvents(res.data || [])).catch(console.error);
-  }, []);
-
-  const handleEventChange = async (e) => {
-    const id = e.target.value;
-    setEventId(id);
-    setCategories([]);
-
-    if (id) {
-      setLoading(true);
+    const init = async () => {
       try {
-        const catsRes = await categoriesAPI.getAll(parseInt(id, 10));
-        setCategories(catsRes.data || []);
+        const res = await eventsAPI.getAll();
+        const allEvents = res.data || [];
+        setEvents(allEvents);
+
+        const active = allEvents.find((e) => e.status === 'active');
+        if (active) {
+          await loadEventData(active.id);
+        }
       } catch (err) {
-        console.error('Failed to load event data:', err);
+        console.error('Failed to load events:', err);
       } finally {
         setLoading(false);
       }
+    };
+    init();
+  }, []);
+
+  const loadEventData = async (id) => {
+    setLoading(true);
+    try {
+      const catsRes = await categoriesAPI.getAll(parseInt(id, 10));
+      setCategories(catsRes.data || []);
+      setEventId(String(id));
+    } catch (err) {
+      console.error('Failed to load event data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEventChange = async (e) => {
+    const id = e.target.value;
+    setCategories([]);
+    setEventId(id);
+
+    if (id) {
+      await loadEventData(id);
     }
   };
 
