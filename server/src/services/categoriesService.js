@@ -42,10 +42,10 @@ export const categoriesService = {
   /**
    * Update category fields.
    * @param {number} id
-   * @param {{ name?: string, display_order?: number, is_locked?: boolean, weight?: number }} data
+   * @param {{ name?: string, display_order?: number, is_locked?: boolean, weight?: number, required_round_id?: number|null }} data
    * @returns {object}
    */
-  update(id, { name, display_order, is_locked, weight }) {
+  update(id, { name, display_order, is_locked, weight, required_round_id }) {
     const db = getDb();
     const updates = [];
     const values = [];
@@ -65,6 +65,10 @@ export const categoriesService = {
     if (weight !== undefined) {
       updates.push('weight = ?');
       values.push(weight);
+    }
+    if (required_round_id !== undefined) {
+      updates.push('required_round_id = ?');
+      values.push(required_round_id !== null ? Number(required_round_id) : null);
     }
 
     if (updates.length === 0) {

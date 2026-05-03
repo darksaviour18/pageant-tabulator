@@ -87,9 +87,24 @@ export const reportsService = {
       .prepare('SELECT id, seat_number, name FROM judges WHERE event_id = ? ORDER BY seat_number')
       .all(eventId);
 
-    const contestants = db
-      .prepare('SELECT id, number, name FROM contestants WHERE event_id = ? AND status = ? ORDER BY number')
-      .all(eventId, 'active');
+    const categoryRow = db.prepare('SELECT required_round_id FROM categories WHERE id = ?').get(categoryId);
+
+    let contestants;
+    if (categoryRow?.required_round_id) {
+      contestants = db
+        .prepare(
+          `SELECT c.id, c.number, c.name
+           FROM contestants c
+           INNER JOIN round_qualifiers rq ON rq.contestant_id = c.id
+           WHERE rq.round_id = ? AND c.event_id = ? AND c.status = 'active'
+           ORDER BY c.number`
+        )
+        .all(categoryRow.required_round_id, eventId);
+    } else {
+      contestants = db
+        .prepare('SELECT id, number, name FROM contestants WHERE event_id = ? AND status = ? ORDER BY number')
+        .all(eventId, 'active');
+    }
 
     const scores = db
       .prepare(
@@ -99,13 +114,28 @@ export const reportsService = {
 
     const rankings = this._calculateRankings(contestants, criteria, scores);
 
+    const ranked_contestants = rankings.map(r => ({
+      id: r.contestant_id,
+      number: r.contestant_number,
+      name: r.contestant_name,
+      overall_rank: r.rank,
+      weighted_total: r.total_score,
+    }));
+
     const report = {
-      category: { id: category.id, name: category.name, display_order: category.display_order, is_locked: !!category.is_locked },
+      category: {
+        id: category.id,
+        name: category.name,
+        display_order: category.display_order,
+        is_locked: !!category.is_locked,
+        required_round_id: categoryRow?.required_round_id ?? null,
+      },
       criteria,
       judges,
       contestants,
       scores,
       rankings,
+      ranked_contestants,
     };
 
     setToCache(cacheKey, report);
@@ -133,21 +163,52 @@ export const reportsService = {
 
     if (!categoryIds || categoryIds.length === 0) return null;
 
-    // Verify all categories belong to this event
+    // Verify all categories belong to this event (fetch with required_round_id)
     const placeholders = categoryIds.map(() => '?').join(',');
     const categories = db
       .prepare(
-        `SELECT id, name, weight, display_order FROM categories WHERE id IN (${placeholders}) AND event_id = ? ORDER BY display_order`
+        `SELECT id, name, weight, display_order, required_round_id
+         FROM categories WHERE id IN (${placeholders}) AND event_id = ?
+         ORDER BY display_order`
       )
       .all(...categoryIds, eventId);
 
     if (categories.length !== categoryIds.length) return null;
 
-    const contestants = db
-      .prepare('SELECT id, number, name FROM contestants WHERE event_id = ? AND status = ? ORDER BY number')
-      .all(eventId, 'active');
+    // Build the eligible contestant pool as the intersection of all categories' eligible sets.
+    // A contestant must be eligible in every selected category to appear in this report.
+    // Categories with no required_round_id accept all active contestants.
+    const allActive = db
+      .prepare(`SELECT id, number, name FROM contestants WHERE event_id = ? AND status = 'active' ORDER BY number`)
+      .all(eventId);
 
-    if (contestants.length === 0) return { title: report_title || 'Cross-Category Report', categories, contestants: [], rankings: [] };
+    let eligibleIds = new Set(allActive.map(c => c.id));
+
+    for (const cat of categories) {
+      if (cat.required_round_id) {
+        const qualifiers = db
+          .prepare('SELECT contestant_id FROM round_qualifiers WHERE round_id = ?')
+          .all(cat.required_round_id);
+        const qualifierSet = new Set(qualifiers.map(q => q.contestant_id));
+        eligibleIds = new Set([...eligibleIds].filter(id => qualifierSet.has(id)));
+      }
+    }
+
+    const contestants = allActive.filter(c => eligibleIds.has(c.id));
+
+    if (contestants.length === 0) {
+      return {
+        title: report_title || 'Cross-Category Report',
+        categories: categories.map(c => ({ id: c.id, name: c.name, weight: c.weight, display_order: c.display_order })),
+        contestants: [],
+        eligible_count: 0,
+        total_active_count: allActive.length,
+        filtered_by_rounds: categories.filter(c => c.required_round_id).map(c => ({
+          category_id: c.id,
+          round_id: c.required_round_id,
+        })),
+      };
+    }
 
     // Calculate total weights for normalization
     const totalWeight = categories.reduce((sum, cat) => sum + (cat.weight || 1), 0);
@@ -206,8 +267,15 @@ export const reportsService = {
 
     const report = {
       title: report_title || 'Cross-Category Consolidation Report',
-      categories: categories.map(c => ({ id: c.id, name: c.name, weight: c.weight, display_order: c.display_order })),
+      categories: categories.map(c => ({
+        id: c.id, name: c.name, weight: c.weight, display_order: c.display_order,
+      })),
       contestants: ranked,
+      eligible_count: contestants.length,
+      total_active_count: allActive.length,
+      filtered_by_rounds: categories
+        .filter(c => c.required_round_id)
+        .map(c => ({ category_id: c.id, round_id: c.required_round_id })),
     };
 
     setToCache(cacheKey, report);

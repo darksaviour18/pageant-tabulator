@@ -194,6 +194,15 @@ export function initDatabase() {
     // Column may already exist (ignore error)
   }
 
+  // v1.7: Migration: Add required_round_id for elimination round contestant filtering
+  try {
+    dbInstance.exec(
+      `ALTER TABLE categories ADD COLUMN required_round_id INTEGER REFERENCES elimination_rounds(id) ON DELETE SET NULL`
+    );
+  } catch {
+    // Column already exists on subsequent server starts — safe to ignore
+  }
+
   return dbInstance;
 }
 

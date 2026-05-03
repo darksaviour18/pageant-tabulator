@@ -324,3 +324,16 @@ export function broadcastCategoryLock(io, categoryId, isLocked) {
 export function broadcastContestantAdded(io, contestant) {
   io.emit('contestant_added', { contestant });
 }
+
+/**
+ * Broadcast to all connected sockets that the eligible contestant list for a
+ * specific category has changed. Judges currently viewing that category should
+ * reload their score sheet.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {number} categoryId
+ * @param {number|null} requiredRoundId  The new round ID, or null if no filtering
+ */
+export function broadcastContestantsUpdated(io, categoryId, requiredRoundId) {
+  io.emit('contestants_updated', { categoryId, requiredRoundId });
+}
