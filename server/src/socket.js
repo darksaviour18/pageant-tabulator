@@ -202,6 +202,11 @@ export function setupSocketHandlers(io, app) {
         judge: { id: judge.id, seat_number: judge.seat_number, name: judge.name },
       });
 
+      io.to('admins').emit('judge_connected', {
+        judgeId: judge.id,
+        eventId: judge.event_id,
+      });
+
       console.log(`[Socket] Judge ${judge.name} (Seat #${judge.seat_number}) authenticated on socket ${socket.id}`);
     });
 

@@ -198,6 +198,19 @@ export default function AdminMonitor() {
     return () => unsubReconnect();
   }, [onEvent]);
 
+  // Refresh judge list when a new judge connects (debounced to avoid flurry on reconnect)
+  useEffect(() => {
+    let timer;
+    const unsubJudgeConnected = onEvent('judge_connected', () => {
+      clearTimeout(timer);
+      timer = setTimeout(loadInitialData, 3000);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsubJudgeConnected();
+    };
+  }, [onEvent]);
+
   const handleUnlock = useCallback(async (judgeId, judgeName, categoryId, categoryName) => {
     setConfirmDialog({
       open: true,
