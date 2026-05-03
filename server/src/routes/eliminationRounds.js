@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db/init.js';
 import { verifyAdmin } from './adminAuth.js';
 import { writeAuditLog } from '../services/auditService.js';
-import { invalidateReportCache } from '../services/reportsService.js';
+import { invalidateReportCache, reportsService } from '../services/reportsService.js';
 import { broadcastContestantsUpdated } from '../socket.js';
 
 const router = Router();
@@ -13,18 +13,37 @@ const router = Router();
  * round_order auto-assigns as MAX(round_order)+1 if not provided.
  */
 router.post('/', verifyAdmin, (req, res, next) => {
-  const { event_id, round_name, round_order, contestant_count, based_on_report_id, qualifiers, qualifying_category_ids } = req.body;
+  const { event_id, round_name, round_order, contestant_count, based_on_report_id, qualifying_category_ids } = req.body;
+  let { qualifiers } = req.body;
 
   if (!event_id || !round_name || contestant_count == null) {
     return res.status(400).json({ error: 'event_id, round_name, and contestant_count are required' });
   }
 
-  if (!qualifiers || !Array.isArray(qualifiers) || qualifiers.length === 0) {
-    return res.status(400).json({ error: 'qualifiers array is required and must not be empty' });
-  }
-
   if (!qualifying_category_ids || !Array.isArray(qualifying_category_ids) || qualifying_category_ids.length === 0) {
     return res.status(400).json({ error: 'qualifying_category_ids array is required and must not be empty' });
+  }
+
+  // Auto-compute qualifiers from qualifying categories if not explicitly provided
+  if (!qualifiers || !Array.isArray(qualifiers) || qualifiers.length === 0) {
+    if (!contestant_count) {
+      return res.status(400).json({ error: 'contestant_count is required to auto-compute qualifiers' });
+    }
+    try {
+      const report = reportsService.generateCrossCategoryReport(event_id, {
+        categoryIds: qualifying_category_ids,
+      });
+      if (report && report.contestants && report.contestants.length > 0) {
+        qualifiers = report.contestants
+          .slice(0, contestant_count)
+          .map((c, idx) => ({ contestant_id: c.id, rank: idx + 1 }));
+      } else {
+        qualifiers = [];
+      }
+    } catch (err) {
+      console.error('[EliminationRounds] Failed to auto-compute qualifiers:', err);
+      qualifiers = [];
+    }
   }
 
   try {
