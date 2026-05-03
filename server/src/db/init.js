@@ -51,7 +51,8 @@ export function initDatabase() {
       name TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       status TEXT DEFAULT 'active' CHECK(status IN ('active', 'archived')),
-      tabulators TEXT -- JSON array of tabulator names: [{name: "REYMOND ABELLA"}]
+      tabulators TEXT, -- JSON array of tabulator names: [{name: "REYMOND ABELLA"}]
+      scoring_mode TEXT DEFAULT 'direct' CHECK(scoring_mode IN ('direct', 'weighted'))
     );
 
     CREATE TABLE IF NOT EXISTS judges (
@@ -198,6 +199,15 @@ export function initDatabase() {
   try {
     dbInstance.exec(
       `ALTER TABLE categories ADD COLUMN required_round_id INTEGER REFERENCES elimination_rounds(id) ON DELETE SET NULL`
+    );
+  } catch {
+    // Column already exists on subsequent server starts — safe to ignore
+  }
+
+  // v1.14: Migration: Add scoring_mode to events table
+  try {
+    dbInstance.exec(
+      `ALTER TABLE events ADD COLUMN scoring_mode TEXT DEFAULT 'direct' CHECK(scoring_mode IN ('direct', 'weighted'))`
     );
   } catch {
     // Column already exists on subsequent server starts — safe to ignore
