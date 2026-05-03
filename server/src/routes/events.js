@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { verifyAdmin } from './adminAuth.js';
+import { getDb } from '../db/init.js';
+import { invalidateReportCache } from '../services/reportsService.js';
 
 const router = Router();
 
@@ -60,7 +62,7 @@ router.get('/:id', (req, res, next) => {
  */
 router.patch('/:id', verifyAdmin, (req, res, next) => {
   const { id } = req.params;
-  const { name, status, tabulators } = req.body;
+  const { name, status, tabulators, scoring_mode } = req.body;
 
   try {
     const existing = eventsService.getById(parseInt(id, 10));
@@ -80,10 +82,39 @@ router.patch('/:id', verifyAdmin, (req, res, next) => {
       return res.status(400).json({ error: 'tabulators must be an array of {name: string}' });
     }
 
+    if (scoring_mode !== undefined && !['direct', 'weighted'].includes(scoring_mode)) {
+      return res.status(400).json({ error: 'scoring_mode must be "direct" or "weighted"' });
+    }
+
+    // Lock scoring_mode change if scores already exist for this event
+    if (scoring_mode !== undefined && scoring_mode !== existing.scoring_mode) {
+      const db = getDb();
+      const scoreCount = db.prepare('SELECT COUNT(*) as cnt FROM scores WHERE event_id = ?').get(parseInt(id, 10)).cnt;
+      if (scoreCount > 0) {
+        return res.status(400).json({ error: 'Scoring mode cannot be changed after judging has started.' });
+      }
+
+      // Auto-migrate all criteria max_score in this event to match the new mode
+      if (scoring_mode === 'direct') {
+        db.prepare(
+          `UPDATE criteria SET max_score = ROUND(weight * 100), min_score = 0
+           WHERE category_id IN (SELECT id FROM categories WHERE event_id = ?)`
+        ).run(parseInt(id, 10));
+      } else {
+        db.prepare(
+          `UPDATE criteria SET max_score = 10, min_score = 0
+           WHERE category_id IN (SELECT id FROM categories WHERE event_id = ?)`
+        ).run(parseInt(id, 10));
+      }
+
+      invalidateReportCache(parseInt(id, 10));
+    }
+
     const updated = eventsService.update(parseInt(id, 10), {
       name: name?.trim(),
       status,
       tabulators: tabulators ? JSON.stringify(tabulators) : undefined,
+      scoring_mode,
     });
     return res.json(updated);
   } catch (err) {

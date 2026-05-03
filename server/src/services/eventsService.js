@@ -43,8 +43,11 @@ export const eventsService = {
     const event = this.getById(id);
     if (!event) return null;
 
+    const scoreCount = db.prepare('SELECT COUNT(*) as cnt FROM scores WHERE event_id = ?').get(id).cnt;
+
     return {
       ...event,
+      has_scores: scoreCount > 0,
       judges: db
         .prepare(
           'SELECT id, event_id, seat_number, name FROM judges WHERE event_id = ? ORDER BY seat_number'
@@ -83,10 +86,10 @@ export const eventsService = {
   /**
    * Update event fields.
    * @param {number} id
-   * @param {{ name?: string, status?: string, tabulators?: string }} data
+   * @param {{ name?: string, status?: string, tabulators?: string, scoring_mode?: string }} data
    * @returns {object}
    */
-  update(id, { name, status, tabulators }) {
+  update(id, { name, status, tabulators, scoring_mode }) {
     const db = getDb();
     const updates = [];
     const values = [];
@@ -102,6 +105,10 @@ export const eventsService = {
     if (tabulators !== undefined) {
       updates.push('tabulators = ?');
       values.push(tabulators);
+    }
+    if (scoring_mode !== undefined) {
+      updates.push('scoring_mode = ?');
+      values.push(scoring_mode);
     }
 
     if (updates.length === 0) {
