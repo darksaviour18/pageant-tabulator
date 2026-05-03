@@ -126,8 +126,8 @@ describe('Smoke Tests — Full Scoring Flow', () => {
     expect(res.status).toBe(200);
     expect(res.body.category.name).toBe('Evening Gown');
     expect(res.body.rankings.length).toBe(1);
-    // Poise: 9.5 * 0.4 = 3.8, Beauty: 8.0 * 0.6 = 4.8, Total = 8.6
-    expect(res.body.rankings[0].total_score).toBe(8.6);
+    // Direct mode: Poise: 9.5, Beauty: 8.0, Total = 17.5
+    expect(res.body.rankings[0].total_score).toBe(17.5);
     expect(res.body.rankings[0].rank).toBe(1);
   });
 

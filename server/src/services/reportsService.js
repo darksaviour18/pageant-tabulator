@@ -79,6 +79,9 @@ export const reportsService = {
 
     if (!category) return null;
 
+    const eventRow = db.prepare('SELECT scoring_mode FROM events WHERE id = ?').get(eventId);
+    const scoring_mode = eventRow?.scoring_mode || 'direct';
+
     const criteria = db
       .prepare('SELECT id, name, weight, min_score, max_score FROM criteria WHERE category_id = ? ORDER BY display_order')
       .all(categoryId);
@@ -112,7 +115,7 @@ export const reportsService = {
       )
       .all(categoryId);
 
-    const rankings = this._calculateRankings(contestants, criteria, scores);
+    const rankings = this._calculateRankings(contestants, criteria, scores, scoring_mode);
 
     const ranked_contestants = rankings.map(r => ({
       id: r.contestant_id,
@@ -286,7 +289,7 @@ export const reportsService = {
   /**
    * Calculate weighted scores and rank contestants for a single category.
    */
-  _calculateRankings(contestants, criteria, scores) {
+  _calculateRankings(contestants, criteria, scores, scoring_mode = 'direct') {
     if (!contestants.length || !criteria.length) return [];
 
     const scoresByContestantCriterion = {};
@@ -303,7 +306,11 @@ export const reportsService = {
         const judgeScores = scoresByContestantCriterion[key] || [];
         if (judgeScores.length === 0) continue;
         const avgScore = judgeScores.reduce((sum, s) => sum + s, 0) / judgeScores.length;
-        totalScore += avgScore * criterion.weight;
+        if (scoring_mode === 'weighted') {
+          totalScore += avgScore * criterion.weight;
+        } else {
+          totalScore += avgScore;
+        }
       }
       return {
         contestant_id: contestant.id,
