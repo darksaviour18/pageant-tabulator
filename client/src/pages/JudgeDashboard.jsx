@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ChevronRight, AlertCircle, Wifi, WifiOff, Sparkles, ClipboardList } from 'lucide-react';
+import { ChevronRight, AlertCircle, Wifi, WifiOff, Sparkles, ClipboardList } from 'lucide-react';
 import { getJudgeSession, clearJudgeSession } from '../utils/session';
 import { scoringAPI, submissionsAPI, scoresAPI } from '../api';
 import { markCategoryUnlocked } from '../db';
@@ -9,6 +9,7 @@ import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
 import { SkeletonCard } from '../components/Skeleton';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function JudgeDashboard() {
   const navigate = useNavigate();
@@ -32,6 +33,9 @@ export default function JudgeDashboard() {
   const abortControllerRef = useRef(null);
   const handleSelectCategoryRef = useRef(null);
   const selectedCategoryRef = useRef(selectedCategory);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef(null);
 
   useEffect(() => {
     const s = getJudgeSession();
@@ -301,7 +305,18 @@ export default function JudgeDashboard() {
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-[var(--color-cta)] flex-shrink-0" />
             <div>
-              <h1 className="text-lg font-bold text-[var(--color-text)]">
+              <h1
+                className="text-lg font-bold text-[var(--color-text)] cursor-default"
+                onClick={() => {
+                  clickCountRef.current += 1;
+                  if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+                  clickTimerRef.current = setTimeout(() => { clickCountRef.current = 0; }, 2000);
+                  if (clickCountRef.current >= 10) {
+                    clickCountRef.current = 0;
+                    setShowSignOutConfirm(true);
+                  }
+                }}
+              >
                 {session.eventName}
               </h1>
               <div className="text-xs text-[var(--color-text-muted)]">Pageant Tabulator Pro</div>
@@ -313,13 +328,6 @@ export default function JudgeDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 min-h-[44px] text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign Out
-            </button>
           </div>
         </div>
 
@@ -356,7 +364,18 @@ export default function JudgeDashboard() {
         <div className="flex items-center gap-3">
           <Sparkles className="w-6 h-6 text-[var(--color-cta)] flex-shrink-0" />
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">
+            <h1
+              className="text-2xl font-bold text-[var(--color-text)] cursor-default"
+              onClick={() => {
+                clickCountRef.current += 1;
+                if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+                clickTimerRef.current = setTimeout(() => { clickCountRef.current = 0; }, 2000);
+                if (clickCountRef.current >= 10) {
+                  clickCountRef.current = 0;
+                  setShowSignOutConfirm(true);
+                }
+              }}
+            >
               {session.eventName}
             </h1>
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] mt-0.5">
@@ -373,13 +392,6 @@ export default function JudgeDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 min-h-[44px] text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
         </div>
       </div>
 
@@ -513,6 +525,20 @@ export default function JudgeDashboard() {
           </p>
         </div>
       )}
+
+      {/* Hidden Sign Out Confirmation */}
+      <ConfirmDialog
+        open={showSignOutConfirm}
+        title="Sign Out"
+        message="Sign out of the judge portal? Any unsaved scores will be lost."
+        confirmLabel="Sign Out"
+        variant="danger"
+        onConfirm={() => {
+          setShowSignOutConfirm(false);
+          handleLogout();
+        }}
+        onCancel={() => setShowSignOutConfirm(false)}
+      />
     </div>
   );
 }

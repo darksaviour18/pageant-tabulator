@@ -62,7 +62,7 @@ export default function JudgeLogin() {
         pin,
       });
 
-      sessionStorage.setItem(
+      localStorage.setItem(
         JUDGE_SESSION_KEY,
         JSON.stringify({
           judgeId: res.data.judge.id,

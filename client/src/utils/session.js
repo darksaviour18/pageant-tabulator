@@ -1,10 +1,11 @@
 /**
- * Judge session management using sessionStorage.
+ * Judge session management using localStorage.
+ * Survives tab/browser close — judges are not logged out by accident.
  */
 
 export function getJudgeSession() {
   try {
-    const raw = sessionStorage.getItem('judge_session');
+    const raw = localStorage.getItem('judge_session');
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -13,5 +14,5 @@ export function getJudgeSession() {
 }
 
 export function clearJudgeSession() {
-  sessionStorage.removeItem('judge_session');
+  localStorage.removeItem('judge_session');
 }

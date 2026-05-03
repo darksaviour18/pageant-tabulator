@@ -12,7 +12,7 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   if (config.url?.startsWith('/scores')) {
     try {
-      const session = JSON.parse(sessionStorage.getItem('judge_session') || '{}');
+      const session = JSON.parse(localStorage.getItem('judge_session') || '{}');
       if (session.token) {
         config.headers['Authorization'] = `Bearer ${session.token}`;
       }

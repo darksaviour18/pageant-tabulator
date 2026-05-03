@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { checkAdminSession } from '../pages/AdminLogin';
+import { getJudgeSession, clearJudgeSession } from '../utils/session';
 
 /**
  * ProtectedRoute for admin pages.
@@ -8,17 +9,11 @@ import { checkAdminSession } from '../pages/AdminLogin';
  */
 export default function ProtectedRoute({ children }) {
   const location = useLocation();
-  const rawJudge = sessionStorage.getItem('judge_session');
+  const rawJudge = getJudgeSession();
 
   // If there's an active judge session, redirect to judge portal
   if (rawJudge) {
-    try {
-      JSON.parse(rawJudge);
-      return <Navigate to="/judge/dashboard" state={{ from: location }} replace />;
-    } catch {
-      sessionStorage.removeItem('judge_session');
-      return <Navigate to="/judge/login" state={{ from: location }} replace />;
-    }
+    return <Navigate to="/judge/dashboard" state={{ from: location }} replace />;
   }
 
   // Check admin session
@@ -35,16 +30,9 @@ export default function ProtectedRoute({ children }) {
  */
 export function JudgeProtectedRoute({ children }) {
   const location = useLocation();
-  const raw = sessionStorage.getItem('judge_session');
+  const raw = getJudgeSession();
 
   if (!raw) {
-    return <Navigate to="/judge/login" state={{ from: location }} replace />;
-  }
-
-  try {
-    JSON.parse(raw);
-  } catch {
-    sessionStorage.removeItem('judge_session');
     return <Navigate to="/judge/login" state={{ from: location }} replace />;
   }
 
