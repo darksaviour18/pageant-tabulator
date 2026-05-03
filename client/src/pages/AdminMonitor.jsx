@@ -279,12 +279,13 @@ export default function AdminMonitor() {
       setPreviewJudge((prev) => ({
         ...prev,
         scores: res.data.scores || [],
+        contestants: res.data.contestants || [],
         submitted: res.data.submitted || false,
         unlockedByAdmin: res.data.unlockedByAdmin || false,
       }));
     } catch (err) {
       console.error('Failed to load judge scores:', err);
-      setPreviewJudge((prev) => ({ ...prev, scores: [] }));
+      setPreviewJudge((prev) => ({ ...prev, scores: [], contestants: [] }));
     } finally {
       setPreviewLoading(false);
     }
@@ -464,6 +465,7 @@ function ScorePreviewModal({ preview, onClose }) {
   const { judge, category, scores, submitted, unlockedByAdmin } = preview;
 
   // Build a matrix: rows = criteria, columns = contestants with scores
+  const contestants = preview.contestants || [];
   const criteriaMap = {};
   const contestantScores = {};
   for (const s of scores) {
@@ -506,7 +508,7 @@ function ScorePreviewModal({ preview, onClose }) {
                   <tr className="border-b border-[var(--color-border)]">
                     <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Contestant</th>
                     {Object.keys(contestantScores).map((cid) => {
-                      const c = category.contestants?.find((ct) => ct.id === parseInt(cid));
+                      const c = contestants.find((ct) => ct.id === parseInt(cid));
                       return (
                         <th key={cid} className="text-center py-2 px-3 text-[var(--color-text-muted)] font-medium">
                           {c ? `#${c.number}` : `#?`}
