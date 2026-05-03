@@ -19,11 +19,12 @@ db.prepare('DELETE FROM events').run();
 
 console.log('[Seed] Cleared all tables');
 
-// Create event
-const eventResult = db.prepare('INSERT INTO events (name, status, tabulators) VALUES (?, ?, ?)').run(
+// Create event (defaults to 'direct' scoring_mode)
+const eventResult = db.prepare('INSERT INTO events (name, status, tabulators, scoring_mode) VALUES (?, ?, ?, ?)').run(
   'Miss Pageant 2026', 
   'active', 
-  JSON.stringify([{name:'Beethoven Etol'}, {name:'Claudette Laroa'}])
+  JSON.stringify([{name:'Beethoven Etol'}, {name:'Claudette Laroa'}]),
+  'direct'
 );
 const eventId = eventResult.lastInsertRowid;
 console.log('[Seed] Created event:', eventId);
@@ -63,51 +64,51 @@ for (let i = 0; i < contestants.length; i++) {
   console.log(`[Seed] Created contestant: ${i + 1}. ${contestants[i]}`);
 }
 
-// Create categories and criteria
+// Create categories and criteria (direct mode: max_score = ROUND(weight * 100))
 const categories = [
   { 
     name: 'Pre-judging', 
     display_order: 1, 
     criteria: [
-      { name: 'Poise', weight: 0.30, min_score: 1, max_score: 10, display_order: 1 },
-      { name: 'Presence', weight: 0.40, min_score: 1, max_score: 10, display_order: 2 },
-      { name: 'Stage Presence', weight: 0.30, min_score: 1, max_score: 10, display_order: 3 },
+      { name: 'Poise', weight: 0.30, min_score: 0, max_score: 30, display_order: 1 },
+      { name: 'Presence', weight: 0.40, min_score: 0, max_score: 40, display_order: 2 },
+      { name: 'Stage Presence', weight: 0.30, min_score: 0, max_score: 30, display_order: 3 },
     ]
   },
   { 
     name: 'Production Number', 
     display_order: 2, 
     criteria: [
-      { name: 'Choreography', weight: 0.33, min_score: 1, max_score: 10, display_order: 1 },
-      { name: 'Energy', weight: 0.33, min_score: 1, max_score: 10, display_order: 2 },
-      { name: 'Crowd Appeal', weight: 0.34, min_score: 1, max_score: 10, display_order: 3 },
+      { name: 'Choreography', weight: 0.33, min_score: 0, max_score: 33, display_order: 1 },
+      { name: 'Energy', weight: 0.33, min_score: 0, max_score: 33, display_order: 2 },
+      { name: 'Crowd Appeal', weight: 0.34, min_score: 0, max_score: 34, display_order: 3 },
     ]
   },
   { 
     name: 'Swimwear', 
     display_order: 3, 
     criteria: [
-      { name: 'Poise', weight: 0.35, min_score: 1, max_score: 10, display_order: 1 },
-      { name: 'Physique', weight: 0.35, min_score: 1, max_score: 10, display_order: 2 },
-      { name: 'Confidence', weight: 0.30, min_score: 1, max_score: 10, display_order: 3 },
+      { name: 'Poise', weight: 0.35, min_score: 0, max_score: 35, display_order: 1 },
+      { name: 'Physique', weight: 0.35, min_score: 0, max_score: 35, display_order: 2 },
+      { name: 'Confidence', weight: 0.30, min_score: 0, max_score: 30, display_order: 3 },
     ]
   },
   { 
     name: 'Evening Gown', 
     display_order: 4, 
     criteria: [
-      { name: 'Elegance', weight: 0.40, min_score: 1, max_score: 10, display_order: 1 },
-      { name: 'Poise', weight: 0.30, min_score: 1, max_score: 10, display_order: 2 },
-      { name: 'Stage Presence', weight: 0.30, min_score: 1, max_score: 10, display_order: 3 },
+      { name: 'Elegance', weight: 0.40, min_score: 0, max_score: 40, display_order: 1 },
+      { name: 'Poise', weight: 0.30, min_score: 0, max_score: 30, display_order: 2 },
+      { name: 'Stage Presence', weight: 0.30, min_score: 0, max_score: 30, display_order: 3 },
     ]
   },
   { 
     name: 'Final Q&A', 
     display_order: 5, 
     criteria: [
-      { name: 'Articulation', weight: 0.33, min_score: 1, max_score: 10, display_order: 1 },
-      { name: 'Creativity', weight: 0.33, min_score: 1, max_score: 10, display_order: 2 },
-      { name: 'Confidence', weight: 0.34, min_score: 1, max_score: 10, display_order: 3 },
+      { name: 'Articulation', weight: 0.33, min_score: 0, max_score: 33, display_order: 1 },
+      { name: 'Creativity', weight: 0.33, min_score: 0, max_score: 33, display_order: 2 },
+      { name: 'Confidence', weight: 0.34, min_score: 0, max_score: 34, display_order: 3 },
     ]
   },
 ];
@@ -175,17 +176,57 @@ for (const judgeId of judgeIds) {
 
 console.log('[Seed] Sample scores generated for all judges in categories 1-4');
 
+// Create a sample elimination round (Top 5 from cross-category rankings)
+console.log('\n[Seed] Creating sample elimination round...');
+
+// Compute cross-category totals for ranking (simple sum across categories 1-4)
+const contestantTotals = [];
+for (const cId of contestantIds) {
+  const total = db.prepare(`
+    SELECT SUM(score) as total FROM scores 
+    WHERE contestant_id = ? AND category_id IN (?,?,?,?)
+  `).get(cId, ...categoryIds.slice(0, 4));
+  contestantTotals.push({ contestant_id: cId, total: total?.total || 0 });
+}
+
+contestantTotals.sort((a, b) => b.total - a.total);
+const top5 = contestantTotals.slice(0, 5);
+
+console.log('[Seed]   Top 5 qualifiers:');
+for (let i = 0; i < top5.length; i++) {
+  const c = db.prepare('SELECT number, name FROM contestants WHERE id = ?').get(top5[i].contestant_id);
+  console.log(`[Seed]     #${i + 1}: #${c.number} ${c.name} (${top5[i].total?.toFixed(1) || 0})`);
+}
+
+const roundResult = db.prepare(
+  'INSERT INTO elimination_rounds (event_id, round_name, round_order, contestant_count) VALUES (?, ?, ?, ?)'
+).run(eventId, 'Top 5', 1, 5);
+const roundId = roundResult.lastInsertRowid;
+
+const insertQualifier = db.prepare(
+  'INSERT INTO round_qualifiers (round_id, contestant_id, qualified_rank) VALUES (?, ?, ?)'
+);
+for (let i = 0; i < top5.length; i++) {
+  insertQualifier.run(roundId, top5[i].contestant_id, i + 1);
+}
+
+// Link Final Q&A to the Top 5 round
+db.prepare('UPDATE categories SET required_round_id = ? WHERE id = ?').run(roundId, categoryIds[4]);
+console.log(`[Seed]   Round "${'Top 5'}" created (ID: ${roundId}) and linked to Final Q&A`);
+
 console.log('\n[Seed] ============================================');
 console.log('[Seed] DONE - Database rebuilt successfully');
 console.log('[Seed] ============================================');
 console.log('[Seed] Event: Miss Pageant 2026 (ID:', eventId, ')');
+console.log('[Seed]   Scoring mode: direct (weight-based caps)');
 console.log('[Seed] Judges: 5 (PINs: 1234, 2345, 3456, 4567, 5678)');
 console.log('[Seed] Contestants: 10 (Sophia - Antonette)');
 console.log('[Seed] Categories: 5');
-console.log('[Seed]   1. Pre-judging (Poise, Presence, Stage Presence)');
-console.log('[Seed]   2. Production Number (Choreography, Energy, Crowd Appeal)');
-console.log('[Seed]   3. Swimwear (Poise, Physique, Confidence)');
-console.log('[Seed]   4. Evening Gown (Elegance, Poise, Stage Presence)');
-console.log('[Seed]   5. Final Q&A (Articulation, Creativity, Confidence)');
+console.log('[Seed]   1. Pre-judging (Poise 0-30, Presence 0-40, Stage Presence 0-30) → total 100');
+console.log('[Seed]   2. Production Number (Choreography 0-33, Energy 0-33, Crowd Appeal 0-34) → total 100');
+console.log('[Seed]   3. Swimwear (Poise 0-35, Physique 0-35, Confidence 0-30) → total 100');
+console.log('[Seed]   4. Evening Gown (Elegance 0-40, Poise 0-30, Stage Presence 0-30) → total 100');
+console.log('[Seed]   5. Final Q&A (Articulation 0-33, Creativity 0-33, Confidence 0-34) → total 100 [🏆 Top 5 only]');
 console.log('[Seed] Sample scores: All judges scored categories 1-4');
-console.log('[Seed] Ready for: Cross-category report → Elimination round → Final Q&A');
+console.log('[Seed] Elimination round: "Top 5" (linked to Final Q&A)');
+console.log('[Seed] Ready: Login as judge → see "🏆 Top 5 only" on Final Q&A card → score only 5 qualifiers');
