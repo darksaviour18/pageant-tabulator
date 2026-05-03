@@ -21,8 +21,10 @@ export default function LiveScores() {
   const [round, setRound] = useState(null);
   const [loading, setLoading] = useState(true);
   const [highlightedCells, setHighlightedCells] = useState(new Set());
-  const abortRef = useRef(false);
   const catDataRef = useRef(catData);
+  const catFlushTimer = useRef(null);
+  const scoresRef = useRef(scores);
+  const scoresFlushTimer = useRef(null);
   const handleRoundChangeRef = useRef(null);
   const fetchAbortRef = useRef(null);
 
@@ -37,7 +39,7 @@ export default function LiveScores() {
         loadJudges(active.id);
       }
     }).catch(() => {}).finally(() => setLoading(false));
-    return () => { abortRef.current = true; };
+    return () => { clearTimeout(catFlushTimer.current); clearTimeout(scoresFlushTimer.current); };
   }, []);
 
   const loadRounds = async (id) => {
@@ -82,9 +84,10 @@ export default function LiveScores() {
   };
 
   // Parse value prefix and dispatch to the appropriate handler
-  const handleSelect = (e) => {
+  const handleSelect = async (e) => {
     const val = e.target.value;
     if (!val) {
+      fetchAbortRef.current?.abort();
       setSelectedRoundId('');
       setSelectedCategoryId('');
       setCatData({});
@@ -99,14 +102,18 @@ export default function LiveScores() {
     const type = val.substring(0, dash);
     const id = val.substring(dash + 1);
 
-    if (type === 'round') {
-      setSelectedCategoryId('');
-      handleRoundChange(id);
-    } else if (type === 'cat') {
-      setSelectedRoundId('');
-      setRound(null);
-      setQualifyingCatIds([]);
-      handleCategoryChange(id);
+    try {
+      if (type === 'round') {
+        setSelectedCategoryId('');
+        await handleRoundChange(id);
+      } else if (type === 'cat') {
+        setSelectedRoundId('');
+        setRound(null);
+        setQualifyingCatIds([]);
+        await handleCategoryChange(id);
+      }
+    } catch (err) {
+      console.error('[LiveScores] Selection error:', err);
     }
   };
 
@@ -116,10 +123,9 @@ export default function LiveScores() {
   // === Round-backed cross-category view ===
   const handleRoundChange = useCallback(async (rId) => {
     setSelectedRoundId(rId);
-    setCatData({});
-    setContestants([]);
+    // Don't clear catData — keep showing the previous table until new data arrives
 
-    if (!rId) { setRound(null); setQualifyingCatIds([]); return; }
+    if (!rId) { setRound(null); setQualifyingCatIds([]); setCatData({}); return; }
 
     if (fetchAbortRef.current) fetchAbortRef.current.abort();
     const controller = new AbortController();
@@ -160,8 +166,8 @@ export default function LiveScores() {
         const cat = categories.find(c => c.id === catId);
         data[catId] = { scores: matrix, criteria: cat?.criteria || [], maxScore: (cat?.criteria || []).reduce((s, c) => s + c.max_score, 0), scoringMode: mode };
       }
-      setCatData(data);
       catDataRef.current = data;
+      setCatData(data);
       const { scoringAPI } = await import('../api');
       if (judges.length > 0) {
         const ctxRes = await scoringAPI.getContext(judges[0].id, parseInt(eventId, 10));
@@ -177,12 +183,9 @@ export default function LiveScores() {
   // === Single-category view ===
   const handleCategoryChange = useCallback(async (catId) => {
     setSelectedCategoryId(catId);
-    setCatData({});
-    setScores({});
-    setContestants([]);
-    setCriteria([]);
+    // Don't clear scores — keep showing the previous table until new data arrives
 
-    if (!catId) return;
+    if (!catId) { setScores({}); setCriteria([]); setContestants([]); return; }
 
     if (fetchAbortRef.current) fetchAbortRef.current.abort();
     const controller = new AbortController();
@@ -207,6 +210,7 @@ export default function LiveScores() {
         matrix[s.judge_id][s.contestant_id][s.criteria_id] = s.score;
       }
       setScores(matrix);
+      scoresRef.current = matrix;
 
       if (judges.length > 0) {
         const { scoringAPI } = await import('../api');
@@ -270,19 +274,22 @@ export default function LiveScores() {
     return ranked;
   }, [contestants, criteria, scores, scoringMode]);
 
-  // Cross-category ranking
+  // Cross-category total per contestant (average across judges per criterion)
+  // Always returns a 0–100 scale regardless of how many judges submitted.
   const categoryTotal = useCallback((catId, contestantId) => {
     const d = catData[catId];
     if (!d) return null;
     let total = 0; let hasScore = false;
     for (const crit of d.criteria) {
+      let sum = 0; let count = 0;
       for (const judgeId of Object.keys(d.scores)) {
         const val = d.scores[judgeId]?.[contestantId]?.[crit.id];
-        if (val !== null && val !== undefined) {
-          total += d.scoringMode === 'weighted' ? val * crit.weight : val;
-          hasScore = true;
-        }
+        if (val !== null && val !== undefined) { sum += val; count++; }
       }
+      if (count === 0) continue;
+      const avg = sum / count;
+      total += d.scoringMode === 'weighted' ? avg * crit.weight : avg;
+      hasScore = true;
     }
     return hasScore ? total : null;
   }, [catData]);
@@ -312,36 +319,42 @@ export default function LiveScores() {
 
     const unsubScore = onEvent('score_updated', (data) => {
       const catId = data.category_id;
-      // Update cross-category data if this category is part of a selected round
+
+      // Cross-category: patch the ref immediately, debounce state flush
       if (selectedRoundId && qualifyingCatIds.includes(catId)) {
-        const key = `${catId}:c:${data.contestant_id}`;
-        setCatData(prev => {
-          const next = { ...prev };
-          if (!next[catId]) return prev;
+        catDataRef.current = (() => {
+          const next = { ...catDataRef.current };
+          if (!next[catId]) return catDataRef.current;
           const scores = { ...next[catId].scores };
           if (!scores[data.judge_id]) scores[data.judge_id] = {};
           if (!scores[data.judge_id][data.contestant_id]) scores[data.judge_id][data.contestant_id] = {};
           scores[data.judge_id][data.contestant_id] = { ...scores[data.judge_id][data.contestant_id], [data.criteria_id]: data.score };
           next[catId] = { ...next[catId], scores };
-          catDataRef.current = next;
           return next;
-        });
+        })();
+        clearTimeout(catFlushTimer.current);
+        catFlushTimer.current = setTimeout(() => setCatData({ ...catDataRef.current }), 100);
+
+        const key = `${catId}:c:${data.contestant_id}`;
         setHighlightedCells(prev => new Set([...prev, key]));
         setTimeout(() => setHighlightedCells(prev => { const n = new Set(prev); n.delete(key); return n; }), 500);
       }
 
-      // Update single-category data if this category is the one being viewed
+      // Single-category: same debounced pattern
       if (selectedCategoryId && String(catId) === selectedCategoryId) {
-        const cellKey = `s:${data.judge_id}:${data.contestant_id}`;
-        setScores(prev => {
-          const next = { ...prev };
+        scoresRef.current = (() => {
+          const next = { ...scoresRef.current };
           if (!next[data.judge_id]) next[data.judge_id] = {};
           if (!next[data.judge_id][data.contestant_id]) next[data.judge_id][data.contestant_id] = {};
           next[data.judge_id][data.contestant_id] = { ...next[data.judge_id][data.contestant_id], [data.criteria_id]: data.score };
           return next;
-        });
+        })();
+        clearTimeout(scoresFlushTimer.current);
+        scoresFlushTimer.current = setTimeout(() => setScores({ ...scoresRef.current }), 100);
+
+        const cellKey = `s:${data.judge_id}:${data.contestant_id}`;
         setHighlightedCells(prev => new Set([...prev, cellKey]));
-        setTimeout(() => setHighlightedCells(prev => { const n = new Set(prev); n.delete(cellKey); return n; }), 500);
+        setTimeout(() => setHighlightedCells(prev => { const n = new Set(prev); n.delete(cellKey); return n; }), 100);
       }
     });
 
@@ -462,7 +475,7 @@ export default function LiveScores() {
                       const max = cat?.criteria?.reduce((s, c) => s + c.max_score, 0) || 0;
                       return (
                         <th key={catId} className="text-center py-2 px-3 text-xs font-semibold text-[var(--color-text-muted)] border-l border-[var(--color-border)] min-w-[80px]">
-                          {cat?.name || `Cat ${catId}`}<br /><span className="opacity-60">0–{max}</span>
+                          {cat?.name || `Cat ${catId}`}<br /><span className="opacity-60">{cat?.weight !== undefined ? `(${(cat.weight * 100).toFixed(0)}%) ` : ''}0–{max}</span>
                         </th>
                       );
                     })}
