@@ -291,6 +291,10 @@ router.post('/batch', verifyJudge, (req, res, next) => {
           continue;
         }
         // Allow null scores (for clearing/resetting scores)
+        if (s.score !== null && typeof s.score !== 'number') {
+          errors.push({ index: i, error: 'Score must be a number or null' });
+          continue;
+        }
 
         // 10.1.2: Validate score range per entry
         const rangeCheck = validateScoreRange(db, s.criteria_id, s.score);
@@ -324,8 +328,8 @@ router.post('/batch', verifyJudge, (req, res, next) => {
 
     // Broadcast real-time score updates to admins — only for successfully saved entries
     const io = getIo(req);
+    const failedIndices = new Set(result.errors.map(e => e.index));
     if (io && result.saved > 0) {
-      const failedIndices = new Set(result.errors.map(e => e.index));
       for (let i = 0; i < scores.length; i++) {
         if (failedIndices.has(i)) continue; // skip entries that failed
         const s = scores[i];
@@ -335,6 +339,25 @@ router.post('/batch', verifyJudge, (req, res, next) => {
           criteria_id: s.criteria_id,
           category_id: s.category_id,
           score: s.score,
+        });
+      }
+    }
+
+    // Audit log for successfully saved entries
+    for (let i = 0; i < scores.length; i++) {
+      if (failedIndices.has(i)) continue;
+      const s = scores[i];
+      const existing = db.prepare(
+        'SELECT score FROM scores WHERE judge_id = ? AND contestant_id = ? AND criteria_id = ?'
+      ).get(s.judge_id, s.contestant_id, s.criteria_id);
+      const action = existing ? 'score_updated' : 'score_entered';
+      const eventRow = db.prepare('SELECT event_id FROM judges WHERE id = ?').get(s.judge_id);
+      if (eventRow) {
+        writeAuditLog(eventRow.event_id, s.judge_id, action, {
+          contestant_id: s.contestant_id,
+          criteria_id: s.criteria_id,
+          score: s.score,
+          previous_score: existing?.score ?? null,
         });
       }
     }

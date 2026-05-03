@@ -47,7 +47,7 @@ export default function ScoreSheet({
   });
 
   // Offline-first: read from IndexedDB — re-fetch when refetchKey changes
-  const { getScore, isUnsaved, isSubmitted, loading: dbLoading } = useOfflineScores(
+  const { getScore, isUnsaved, isSubmitted, loading: dbLoading, updateLocalScore } = useOfflineScores(
     judgeId,
     category.id,
     { serverScores, refetchKey }
@@ -77,6 +77,7 @@ export default function ScoreSheet({
       const hadScoreBefore = prevScore !== null && prevScore !== '';
       
       saveAndSync(contestantId, criteriaId, score);
+      updateLocalScore(contestantId, criteriaId, score);
       
       // Update allScores in parent for real-time progress updates
       if (onScoreSaved) {
@@ -85,14 +86,14 @@ export default function ScoreSheet({
       
       // Notify parent to update progress bar in real-time
       if (onScoreChange) {
-        if (!hadScoreBefore && hasScoreNow) {
-          onScoreChange(true); // New score added
-        } else if (hadScoreBefore && !hasScoreNow) {
-          onScoreChange(false); // Score was cleared
+        if (hasScoreNow && !hadScoreBefore) {
+          onScoreChange(true);
+        } else if (!hasScoreNow && hadScoreBefore) {
+          onScoreChange(false);
         }
       }
     },
-    [saveAndSync, getScore, onScoreChange, onScoreSaved, category]
+    [saveAndSync, updateLocalScore, getScore, onScoreChange, onScoreSaved, category]
   );
 
   // Force flush remaining scores on category submit
@@ -104,8 +105,16 @@ export default function ScoreSheet({
     setShowSubmitModal(false);
     if (getPendingCount() > 0) {
       setSubmitting(true);
-      await syncNow();
+      try {
+        await syncNow();
+      } catch {
+        // sync failed, check if there are still pending scores
+      }
       setSubmitting(false);
+    }
+    if (getPendingCount() > 0) {
+      console.warn('[ScoreSheet] Submit blocked: unsynced scores remain');
+      return;
     }
     onSubmit();
   }, [getPendingCount, syncNow, onSubmit]);

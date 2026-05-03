@@ -96,8 +96,9 @@ export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSyn
       if (local !== undefined && local.score != null) {
         return local.score;
       }
-      // If local score is null (cleared), return null immediately (don't fall back to server)
-      if (local !== undefined && local.score === null) {
+      // If local score is null and synced is false (just cleared, not yet synced), return null
+      // If local score is null but synced is true (server has this value), fall through to server
+      if (local !== undefined && local.score === null && !local.synced) {
         return null;
       }
       // No local entry - fall back to server scores
@@ -122,11 +123,35 @@ export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSyn
     [localScores]
   );
 
+  /**
+   * Update local state immediately after a score change without writing to IndexedDB
+   * (the write is handled by useAutoSave.saveAndSync). This keeps allFilled in sync
+   * without waiting for the server round-trip.
+   */
+  const updateLocalScore = useCallback(
+    (contestantId, criteriaId, score) => {
+      setLocalScores((prev) => {
+        const idx = prev.findIndex(
+          (s) => s.contestantId === contestantId && s.criteriaId === criteriaId
+        );
+        const entry = { judgeId, contestantId, criteriaId, categoryId, score, synced: false };
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], score, synced: false };
+          return next;
+        }
+        return [...prev, entry];
+      });
+    },
+    [judgeId, categoryId]
+  );
+
   return {
     localScores,
     isSubmitted,
     loading,
     saveLocalScore,
+    updateLocalScore,
     getScore,
     isUnsaved,
   };

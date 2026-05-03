@@ -3,7 +3,7 @@ import { saveScore, markScoreSyncedByComposite, getUnsyncedScores, db } from '..
 import { scoresAPI, scoringAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 
-const SYNC_DEBOUNCE_MS = 1000;
+const SYNC_DEBOUNCE_MS = 250;
 
 /**
  * Hook that manages auto-save of score entries.
@@ -176,14 +176,30 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
         }
       }
     } else if (action === 'discard-local') {
-      // Clear local scores for this category, they'll be re-fetched from server
-      const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
-      await db.scores.bulkDelete(localScores.map(s => s.id));
+      // Only delete local scores that exist on the server.
+      // Scores that are local-only (not yet synced) are preserved to avoid data loss.
+      try {
+        const res = await scoresAPI.getCategoryScores(judgeId, eventId, categoryId);
+        const serverScores = res.data?.scores || [];
+        const serverKeys = new Set(serverScores.map(s => `${s.contestant_id}:${s.criteria_id}`));
+        const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
+        const toDelete = localScores
+          .filter(s => serverKeys.has(`${s.contestantId}:${s.criteriaId}`))
+          .map(s => s.id);
+        if (toDelete.length > 0) {
+          await db.scores.bulkDelete(toDelete);
+        }
+      } catch (err) {
+        console.warn('[useAutoSave] Failed to fetch server scores for discard:', err);
+        // Fall back to deleting all local scores for this category
+        const localScores = await db.scores.where({ judgeId, categoryId }).toArray();
+        await db.scores.bulkDelete(localScores.map(s => s.id));
+      }
     }
 
     setConflict(null);
     setRefetchKey((k) => k + 1); // Trigger ScoreSheet to re-fetch from server
-  }, [conflict, judgeId, categoryId]);
+  }, [conflict, judgeId, categoryId, eventId]);
 
   /**
    * Save a score: write to IndexedDB immediately, queue for server sync.
@@ -234,7 +250,7 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
       // Check both queue (for immediate detection) and syncStatus state (for re-render)
       const inQueue = queueRef.current.has(`${contestantId}:${criteriaId}`);
       const inSyncStatus = syncStatus[`${contestantId}:${criteriaId}`] || false;
-      return inQueue || inSyncStatus || syncingRef.current;
+      return inQueue || inSyncStatus;
     },
     clearSyncStatus: () => setSyncStatus({}),
     conflict,
