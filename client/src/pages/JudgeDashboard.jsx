@@ -28,7 +28,7 @@ export default function JudgeDashboard() {
   const [allScores, setAllScores] = useState([]); // All scores for progress bars
   const unlockedTimeoutRef = useRef(null);
   const abortControllerRef = useRef(null);
-  const handleSelectCategoryRef = useRef(handleSelectCategory);
+  const handleSelectCategoryRef = useRef(null);
   const selectedCategoryRef = useRef(selectedCategory);
 
   useEffect(() => {
@@ -81,11 +81,11 @@ export default function JudgeDashboard() {
   // Keep refs in sync to avoid stale closures in socket listeners
   useEffect(() => {
     handleSelectCategoryRef.current = handleSelectCategory;
-  }, [handleSelectCategory]);
+  });
 
   useEffect(() => {
     selectedCategoryRef.current = selectedCategory;
-  }, [selectedCategory]);
+  });
 
   // Listen for admin unlock notifications and contestant list changes
   useEffect(() => {
@@ -133,8 +133,9 @@ export default function JudgeDashboard() {
         signal: abortControllerRef.current.signal
       });
       setScoringData(res.data);
+      setError(null);
     } catch (err) {
-      if (err.name === 'AbortError') return; // Ignore aborted requests
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return;
       setError(err.response?.data?.error || 'Failed to load scoring data');
     } finally {
       setLoading(false);

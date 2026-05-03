@@ -77,7 +77,7 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
  * Get all scores for a specific judge + category, with filtered contestants.
  */
 router.get('/:judgeId/event/:eventId/category/:categoryId', (req, res, next) => {
-  const { judgeId, categoryId } = req.params;
+  const { judgeId, eventId, categoryId } = req.params;
 
   try {
     const db = getDb();
