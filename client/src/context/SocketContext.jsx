@@ -21,24 +21,23 @@ export function SocketProvider({ children }) {
   const heartbeatTimerRef = useRef(null);
 
   useEffect(() => {
-    // Check session type (admin or judge)
+    // Build auth payload from current session — read fresh on every call
+    const getAuthPayload = () => {
+      const isAdminRoute = window.location.pathname === '/' || window.location.pathname.startsWith('/admin');
+      const hasAdminSession = checkAdminSession();
+      const judgeSession = getJudgeSession();
+
+      if (isAdminRoute && hasAdminSession) return { role: 'admin' };
+      if (judgeSession?.judgeId && judgeSession?.eventId)
+        return { role: 'judge', judgeId: judgeSession.judgeId, eventId: judgeSession.eventId };
+      return { role: 'judge' };
+    };
+
+    // Determine handshake role and token
     const isAdminRoute = window.location.pathname === '/' || window.location.pathname.startsWith('/admin');
     const hasAdminSession = checkAdminSession();
     const adminToken = sessionStorage.getItem(ADMIN_TOKEN_KEY);
-    const judgeSession = getJudgeSession();
-
-    // Determine role and credentials
-    let authRole = 'judge';
-    let authPayload = { role: 'judge' };
-    
-    if (isAdminRoute && hasAdminSession) {
-      authRole = 'admin';
-      authPayload = { role: 'admin' };
-    } else if (judgeSession?.judgeId && judgeSession?.eventId) {
-      // Judge session exists - authenticate as judge with credentials
-      authRole = 'judge';
-      authPayload = { role: 'judge', judgeId: judgeSession.judgeId, eventId: judgeSession.eventId };
-    }
+    const handshakeRole = isAdminRoute && hasAdminSession ? 'admin' : 'judge';
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -46,7 +45,7 @@ export function SocketProvider({ children }) {
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
       auth: {
-        role: authRole,
+        role: handshakeRole,
         token: adminToken || undefined,
       },
       withCredentials: true,
@@ -55,10 +54,10 @@ export function SocketProvider({ children }) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected:', socket.id, 'as', authRole);
+      const payload = getAuthPayload();
+      console.log('[Socket] Connected:', socket.id, 'as', payload.role);
       setConnected(true);
-      // Authenticate with role and credentials
-      socket.emit('authenticate', authPayload);
+      socket.emit('authenticate', payload);
     });
 
     socket.on('authenticated', (data) => {
@@ -88,8 +87,8 @@ export function SocketProvider({ children }) {
     socket.on('reconnect', (attempt) => {
       console.log(`[Socket] Reconnected after ${attempt} attempts`);
       setReconnectCount((prev) => prev + 1);
-      // Re-authenticate on reconnect
-      socket.emit('authenticate', authPayload);
+      const payload = getAuthPayload();
+      socket.emit('authenticate', payload);
     });
 
     socket.on('connect_error', (err) => {
