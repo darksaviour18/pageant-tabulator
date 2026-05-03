@@ -89,7 +89,7 @@ export default function PrintReport() {
     try {
       let res;
       if (config.reportType === 'category_detail') {
-        const catId = config.selectedCategoryId;
+        const catId = config.selectedCategoryId || config.categoryId;
         if (!eventId || !catId) {
           setError('Please select a category');
           setLoading(false);
@@ -97,7 +97,7 @@ export default function PrintReport() {
         }
         res = await reportsAPI.getReport(parseInt(eventId, 10), parseInt(catId, 10));
       } else {
-        const catIds = config.selectedCategoryIds;
+        const catIds = config.selectedCategoryIds || config.categoryIds || [];
         if (!eventId || catIds.length === 0) {
           setError('Please select at least one category');
           setLoading(false);
@@ -110,6 +110,7 @@ export default function PrintReport() {
       }
       setReport(res.data);
     } catch (err) {
+      console.error('[Report] Generate failed:', err);
       setError(err.response?.data?.error || 'Failed to generate report');
     } finally {
       setLoading(false);
