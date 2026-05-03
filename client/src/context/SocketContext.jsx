@@ -63,9 +63,7 @@ export function SocketProvider({ children }) {
 
     socket.on('authenticated', (data) => {
       console.log('[Socket] Authenticated:', data);
-      if (data.success && data.role === 'admin') {
-        // Only admin connections use heartbeat from this context
-        if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
+      if (data.success && !heartbeatTimerRef.current) {
         heartbeatTimerRef.current = setInterval(() => {
           socket.emit('heartbeat');
         }, 3000);
