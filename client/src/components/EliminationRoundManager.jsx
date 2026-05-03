@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, X } from 'lucide-react';
-import { eliminationRoundsAPI, reportsAPI, categoriesAPI } from '../api';
+import { eliminationRoundsAPI, categoriesAPI } from '../api';
 
 function QualifierSelector({ event, reportData, editingRound, onClose, onCreate }) {
   const isEditMode = !!editingRound;
@@ -13,13 +13,14 @@ function QualifierSelector({ event, reportData, editingRound, onClose, onCreate 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const rankedContestants = reportData?.contestants || [];
+  const rankedContestants = useMemo(() => reportData?.contestants || [], [reportData?.contestants]);
 
   useEffect(() => {
     if (isEditMode && editingRound) {
       const ids = new Set(rankedContestants.slice(0, contestantCount).map(c => c.id));
       setSelectedIds(ids);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -208,7 +209,7 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
 
   useEffect(() => {
     loadRounds();
-  }, [eventId]);
+  }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadRounds = async () => {
     setLoading(true);
