@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { categoriesService } from '../services/categoriesService.js';
 import { criteriaService } from '../services/criteriaService.js';
 import { verifyAdmin } from './adminAuth.js';
+import { getDb } from '../db/init.js';
 
 const router = Router({ mergeParams: true });
 
@@ -27,11 +28,17 @@ router.post('/', verifyAdmin, (req, res, next) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
+    // Determine default max_score based on event's scoring mode
+    const db = getDb();
+    const event = db.prepare('SELECT scoring_mode FROM events WHERE id = ?').get(category.event_id);
+    const isDirect = event?.scoring_mode === 'direct';
+    const resolvedMaxScore = max_score ?? (isDirect ? Math.round(weight * 100) : 10);
+
     const criterion = criteriaService.create(parseInt(categoryId, 10), {
       name: name.trim(),
       weight,
       min_score: min_score ?? 0,
-      max_score: max_score ?? 10,
+      max_score: resolvedMaxScore,
       display_order: display_order ?? Math.floor(Date.now() / 1000),
     });
 
