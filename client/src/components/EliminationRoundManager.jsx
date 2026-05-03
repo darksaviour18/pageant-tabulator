@@ -353,9 +353,9 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
 
             return (
               <div key={round.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                <button
+                <div
                   onClick={() => handleToggleExpand(round)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     {isExpanded
@@ -371,23 +371,23 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleEditQualifiers(round); }}
+                      onClick={() => handleEditQualifiers(round)}
                       className="text-slate-400 hover:text-blue-600 transition-colors p-1"
                       title="Edit qualifiers"
                     >
                       <Users className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteRound(round.id); }}
+                      onClick={() => handleDeleteRound(round.id)}
                       className="text-slate-400 hover:text-red-600 transition-colors p-1"
                       title="Delete round"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </button>
+                </div>
 
                 {isExpanded && (
                   <div className="px-4 py-3 border-t border-slate-200 space-y-4">
