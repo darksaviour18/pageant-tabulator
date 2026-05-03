@@ -17,7 +17,7 @@ export default function PrintReport() {
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
-  const [selectedRoundId, setSelectedRoundId] = useState('');
+
   const [rounds, setRounds] = useState([]);
   const [reportTitle, setReportTitle] = useState('');
   const [signatureType, setSignatureType] = useState('judges'); // 'judges' | 'tabulators'
@@ -49,7 +49,6 @@ export default function PrintReport() {
     setEventId(id);
     setSelectedCategoryId('');
     setSelectedCategoryIds([]);
-    setSelectedRoundId('');
     setRounds([]);
     setReport(null);
     setError(null);
@@ -160,7 +159,7 @@ export default function PrintReport() {
   const handleDeleteSavedReport = async (id, e) => {
     e.stopPropagation();
     try {
-      await reportsAPI.deleteSavedReport(id);
+      await reportsAPI.deleteSavedReport(parseInt(eventId, 10), id);
       setSavedReports((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       console.error('Failed to delete saved report:', err);
@@ -310,22 +309,6 @@ export default function PrintReport() {
                   {selectedCategoryIds.length} of {categories.length} categories selected
                 </p>
               )}
-            </div>
-          )}
-
-          {rounds.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1">Filter by Round</label>
-              <select
-                value={selectedRoundId}
-                onChange={(e) => setSelectedRoundId(e.target.value)}
-                className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[200px]"
-              >
-                <option value="">All contestants</option>
-                {rounds.map((r) => (
-                  <option key={r.id} value={r.id}>{r.round_name} ({r.contestant_count})</option>
-                ))}
-              </select>
             </div>
           )}
 
