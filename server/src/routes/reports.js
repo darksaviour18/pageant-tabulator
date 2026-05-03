@@ -201,27 +201,39 @@ router.get('/:eventId/category/:categoryId/csv', (req, res, next) => {
 
 /**
  * Helper: convert report data to CSV format.
+ * Iterates report.rankings for contestant-level rows and looks up
+ * per-criterion average scores from report.scores.
  */
 function reportToCsv(report, categoryName) {
-  if (!report || !report.scores || report.scores.length === 0) {
+  if (!report || !report.rankings || report.rankings.length === 0) {
     return '';
+  }
+
+  // Group scores by contestant_id and criteria_id, compute averages
+  const scoreMap = {}; // { contestant_id: { criteria_id: [scores] } }
+  for (const s of report.scores) {
+    if (!scoreMap[s.contestant_id]) scoreMap[s.contestant_id] = {};
+    if (!scoreMap[s.contestant_id][s.criteria_id]) scoreMap[s.contestant_id][s.criteria_id] = [];
+    scoreMap[s.contestant_id][s.criteria_id].push(s.score);
   }
 
   const lines = [];
   const headers = ['Rank', 'Contestant', 'Number', ...report.criteria.map(c => c.name), 'Total'];
   lines.push(headers.map(h => `"${h}"`).join(','));
 
-  for (const row of report.scores) {
+  for (const ranking of report.rankings) {
     const criteriaScores = report.criteria.map(c => {
-      const score = row.scores_by_criteria?.[c.id];
-      return score !== undefined ? score : '';
+      const scores = scoreMap[ranking.contestant_id]?.[c.id];
+      if (!scores || scores.length === 0) return '';
+      const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+      return Math.round(avg * 100) / 100;
     });
     const line = [
-      row.rank || '',
-      `"${row.name}"`,
-      row.number,
+      ranking.rank || '',
+      `"${ranking.contestant_name}"`,
+      ranking.contestant_number,
       ...criteriaScores,
-      row.total_score,
+      ranking.total_score,
     ];
     lines.push(line.join(','));
   }
