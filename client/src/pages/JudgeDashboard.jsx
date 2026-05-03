@@ -417,7 +417,7 @@ export default function JudgeDashboard() {
             const criteriaCount = cat.criteria?.length || 0;
             const eligibleCount = categoryContestantCounts[cat.id] ?? (scoringData.contestants?.length || 0);
             const totalCells = eligibleCount * criteriaCount;
-            const isLocked = cat.is_locked;
+            const isLocked = !!cat.is_locked;
             const isSubmitted = submittedCategories.has(cat.id);
             // Get scored count from all scores (fetched on mount)
             const categoryScores = allScores.filter(s => s.category_id === cat.id && s.score != null && s.score !== '');

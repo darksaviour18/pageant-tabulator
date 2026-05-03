@@ -55,7 +55,7 @@ export default function ScoreSheet({
 
   // Read-only if: submitted AND NOT unlocked, OR category is locked by admin
   const isSubmittedVal = isSubmittedProp !== undefined ? isSubmittedProp : isSubmitted;
-  const isReadOnly = (isSubmittedVal && !isUnlockedProp) || category.is_locked;
+  const isReadOnly = !!((isSubmittedVal && !isUnlockedProp) || category.is_locked);
   const criteria = category.criteria || [];
 
   // Reset sync status when category becomes unlocked (e.g., after admin unlock)
