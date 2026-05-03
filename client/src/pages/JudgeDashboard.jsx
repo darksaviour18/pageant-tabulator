@@ -97,6 +97,11 @@ export default function JudgeDashboard() {
   useEffect(() => {
     const unsub = onEvent('sheet_unlocked', (data) => {
       setUnlockedCategory(data.categoryId);
+      setSubmittedCategories(prev => {
+        const next = new Set(prev);
+        next.delete(data.categoryId);
+        return next;
+      });
       if (session?.judgeId) {
         markCategoryUnlocked(session.judgeId, data.categoryId).catch(err =>
           console.error('[JudgeDashboard] Failed to update IndexedDB on unlock:', err)

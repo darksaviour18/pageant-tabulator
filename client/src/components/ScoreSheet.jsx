@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef, memo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,7 +13,7 @@ import ConflictModal from './ConflictModal';
 import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
 
-export default function ScoreSheet({
+function ScoreSheet({
   judgeId,
   eventId,
   category,
@@ -480,3 +480,5 @@ export default function ScoreSheet({
     </div>
   );
 }
+
+export default memo(ScoreSheet);
