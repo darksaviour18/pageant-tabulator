@@ -175,7 +175,7 @@ export default function JudgeDashboard() {
         }));
       }
 
-      if (res.data.submitted) {
+      if (res.data.submitted && !res.data.unlockedByAdmin) {
         setSubmittedCategories(prev => new Set([...prev, cat.id]));
       }
 
