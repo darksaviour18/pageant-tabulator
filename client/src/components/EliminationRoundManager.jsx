@@ -210,6 +210,8 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
   const [error, setError] = useState(null);
   const [linkingBusy, setLinkingBusy] = useState(false);
   const [standaloneContestants, setStandaloneContestants] = useState([]);
+  const [editingName, setEditingName] = useState(null);
+  const [editNameValue, setEditNameValue] = useState('');
 
   useEffect(() => {
     loadRounds();
@@ -292,6 +294,30 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
     }
   };
 
+  const handleSaveName = async (roundId) => {
+    const newName = editNameValue.trim();
+    if (!newName) {
+      setEditingName(null);
+      return;
+    }
+    try {
+      await eliminationRoundsAPI.update(roundId, { round_name: newName });
+      await loadRounds();
+    } catch {
+      // Revert on failure
+    }
+    setEditingName(null);
+  };
+
+  const handleKeyDown = (e, roundId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveName(roundId);
+    } else if (e.key === 'Escape') {
+      setEditingName(null);
+    }
+  };
+
   const handleEditQualifiers = (round) => {
     setEditingRound(round);
     setShowQualifierModal(true);
@@ -361,8 +387,26 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
                     {isExpanded
                       ? <ChevronDown className="w-4 h-4 text-slate-400" />
                       : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                    <div className="text-left">
-                      <span className="text-sm font-medium text-slate-900">{round.round_name}</span>
+                    <div className="text-left" onClick={(e) => e.stopPropagation()}>
+                      {editingName === round.id ? (
+                        <input
+                          type="text"
+                          value={editNameValue}
+                          onChange={(e) => setEditNameValue(e.target.value)}
+                          onBlur={() => handleSaveName(round.id)}
+                          onKeyDown={(e) => handleKeyDown(e, round.id)}
+                          className="w-40 px-1 py-0.5 text-sm font-medium border border-slate-300 rounded focus:ring-2 focus:ring-amber-500 outline-none"
+                          autoFocus
+                        />
+                      ) : (
+                        <span
+                          className="text-sm font-medium text-slate-900 cursor-pointer hover:text-amber-600 transition-colors"
+                          onClick={() => { setEditingName(round.id); setEditNameValue(round.round_name); }}
+                          title="Click to rename"
+                        >
+                          {round.round_name}
+                        </span>
+                      )}
                       <span className="text-xs text-slate-400 ml-2">{round.contestant_count} contestants</span>
                       {linkedCats.length > 0 && (
                         <span className="ml-2 text-xs text-amber-600 font-medium">

@@ -221,6 +221,49 @@ router.patch('/:roundId/qualifiers', verifyAdmin, (req, res, next) => {
 });
 
 /**
+ * PATCH /api/elimination-rounds/:roundId
+ * Update round metadata (name, contestant_count).
+ */
+router.patch('/:roundId', verifyAdmin, (req, res, next) => {
+  const { roundId } = req.params;
+  const { round_name, contestant_count } = req.body;
+
+  if (round_name === undefined && contestant_count === undefined) {
+    return res.status(400).json({ error: 'At least one field (round_name or contestant_count) is required' });
+  }
+
+  try {
+    const db = getDb();
+    const round = db.prepare('SELECT * FROM elimination_rounds WHERE id = ?').get(roundId);
+    if (!round) {
+      return res.status(404).json({ error: 'Elimination round not found' });
+    }
+
+    const updates = [];
+    const values = [];
+    if (round_name !== undefined && round_name !== round.round_name) {
+      updates.push('round_name = ?');
+      values.push(round_name);
+    }
+    if (contestant_count !== undefined && contestant_count !== round.contestant_count) {
+      updates.push('contestant_count = ?');
+      values.push(Number(contestant_count));
+    }
+
+    if (updates.length > 0) {
+      values.push(roundId);
+      db.prepare(`UPDATE elimination_rounds SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    }
+
+    const updated = db.prepare('SELECT * FROM elimination_rounds WHERE id = ?').get(roundId);
+
+    return res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * DELETE /api/elimination-rounds/:roundId?event_id=X
  * Delete an elimination round. Categories linked to it revert to all-active pool.
  */

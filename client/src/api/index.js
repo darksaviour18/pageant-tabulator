@@ -119,6 +119,7 @@ export const eliminationRoundsAPI = {
   getAll: (eventId) => api.get(`/elimination-rounds?event_id=${eventId}`),
   getQualifiers: (roundId) => api.get(`/elimination-rounds/${roundId}/qualifiers`),
   updateQualifiers: (roundId, data) => api.patch(`/elimination-rounds/${roundId}/qualifiers`, data),
+  update: (roundId, data) => api.patch(`/elimination-rounds/${roundId}`, data),
   delete: (eventId, roundId) => api.delete(`/elimination-rounds/${roundId}?event_id=${eventId}`),
 };
 
