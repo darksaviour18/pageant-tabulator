@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { eventsAPI, categoriesAPI, eliminationRoundsAPI, scoresAPI } from '../api';
 import { useSocket } from '../context/SocketContext';
 import { Eye, Wifi, WifiOff } from 'lucide-react';
@@ -503,52 +503,54 @@ export default function LiveScores() {
                   crossCategoryRanks[idx + 1].rank > round.contestant_count;
 
                 return (
-                  <tr key={c.id} className={`border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition-colors ${isQualifier ? 'bg-green-500/[0.04]' : ''}`}>
-                    <td className={`sticky left-0 bg-[var(--color-bg-elevated)] text-center py-2 px-2 text-sm font-bold ${isQualifier ? 'text-emerald-700' : 'text-[var(--color-text)]'}`}>{item.rank}</td>
-                    <td className="sticky left-0 bg-[var(--color-bg-elevated)] text-left py-2 px-3 text-sm font-medium text-[var(--color-text)] whitespace-nowrap" style={{ left: '48px' }}>
-                      #{c.number} {c.name}
-                    </td>
-                    {isCross ? (
-                      <>
-                        {qualifyingCatIds.map(catId => {
-                          const total = categoryTotal(catId, c.id);
-                          const cellKey = `${catId}:c:${c.id}`;
-                          return (
-                            <td key={cellKey} className={`text-center py-2 px-3 text-sm font-mono border-l border-[var(--color-border)] transition-all duration-300 ${highlightedCells.has(cellKey) ? 'bg-emerald-200/40' : ''}`}>
-                              {total !== null ? Math.round(total) : '—'}
-                            </td>
-                          );
-                        })}
-                        <td className="text-center py-2 px-3 text-sm font-bold font-mono text-[var(--color-text)] border-l border-[var(--color-border)]">
-                          {Math.round(item.weighted_total * 10) / 10}
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        {judges.map(j => {
-                          const total = judgeTotal(j.id, c.id);
-                          const cellKey = `s:${j.id}:${c.id}`;
-                          return (
-                            <td key={cellKey} className={`text-center py-2 px-3 text-sm font-mono border-l border-[var(--color-border)] transition-all duration-300 ${highlightedCells.has(cellKey) ? 'bg-emerald-200/40' : ''}`}>
-                              {total !== null ? Math.round(total) : '—'}
-                            </td>
-                          );
-                        })}
-                        <td className="text-center py-2 px-3 text-sm font-bold font-mono text-[var(--color-text)] border-l border-[var(--color-border)]">
-                          {contestantAvg(c.id) !== null ? Math.round(contestantAvg(c.id)) : '—'}
-                        </td>
-                      </>
+                  <React.Fragment key={c.id}>
+                    <tr className={`border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition-colors ${isQualifier ? 'bg-green-500/[0.04]' : ''}`}>
+                      <td className={`sticky left-0 bg-[var(--color-bg-elevated)] text-center py-2 px-2 text-sm font-bold ${isQualifier ? 'text-emerald-700' : 'text-[var(--color-text)]'}`}>{item.rank}</td>
+                      <td className="sticky left-0 bg-[var(--color-bg-elevated)] text-left py-2 px-3 text-sm font-medium text-[var(--color-text)] whitespace-nowrap" style={{ left: '48px' }}>
+                        #{c.number} {c.name}
+                      </td>
+                      {isCross ? (
+                        <>
+                          {qualifyingCatIds.map(catId => {
+                            const total = categoryTotal(catId, c.id);
+                            const cellKey = `${catId}:c:${c.id}`;
+                            return (
+                              <td key={cellKey} className={`text-center py-2 px-3 text-sm font-mono border-l border-[var(--color-border)] transition-all duration-300 ${highlightedCells.has(cellKey) ? 'bg-emerald-200/40' : ''}`}>
+                                {total !== null ? Math.round(total) : '—'}
+                              </td>
+                            );
+                          })}
+                          <td className="text-center py-2 px-3 text-sm font-bold font-mono text-[var(--color-text)] border-l border-[var(--color-border)]">
+                            {Math.round(item.weighted_total * 10) / 10}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          {judges.map(j => {
+                            const total = judgeTotal(j.id, c.id);
+                            const cellKey = `s:${j.id}:${c.id}`;
+                            return (
+                              <td key={cellKey} className={`text-center py-2 px-3 text-sm font-mono border-l border-[var(--color-border)] transition-all duration-300 ${highlightedCells.has(cellKey) ? 'bg-emerald-200/40' : ''}`}>
+                                {total !== null ? Math.round(total) : '—'}
+                              </td>
+                            );
+                          })}
+                          <td className="text-center py-2 px-3 text-sm font-bold font-mono text-[var(--color-text)] border-l border-[var(--color-border)]">
+                            {contestantAvg(c.id) !== null ? Math.round(contestantAvg(c.id)) : '—'}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                    {drawCutLine && (
+                      <tr className="border-t-2 border-dashed border-amber-400">
+                        <td colSpan={2 + (isCross ? qualifyingCatIds.length + 1 : judges.length + 1)} />
+                      </tr>
                     )}
-                  </tr>
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
-          {isCross && round && crossCategoryRanks.some((item, idx) => {
-            const q = item.rank <= round.contestant_count;
-            const nextOut = idx < crossCategoryRanks.length - 1 && crossCategoryRanks[idx + 1].rank > round.contestant_count;
-            return q && nextOut;
-          }) && <div className="border-t-2 border-dashed border-amber-400 mx-2 mb-2" />}
         </div>
       )}
     </div>

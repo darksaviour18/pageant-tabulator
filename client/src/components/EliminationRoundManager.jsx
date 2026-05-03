@@ -15,6 +15,7 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
   const [qualifyingCategoryIds, setQualifyingCategoryIds] = useState(() =>
     editingRound?.qualifying_category_ids || categories.map(c => c.id)
   );
+  const [autoCompute, setAutoCompute] = useState(!isEditMode);
 
   const rankedContestants = useMemo(() => reportData?.contestants || [], [reportData?.contestants]);
   const isUnranked = rankedContestants.length > 0 && rankedContestants[0].overall_rank === undefined;
@@ -45,21 +46,24 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
   };
 
   const handleSubmit = async () => {
-    if (selectedIds.size === 0) return;
+    if (!autoCompute && selectedIds.size === 0) return;
     setLoading(true);
     setError(null);
     try {
-      const qualifiers = rankedContestants
-        .filter(c => selectedIds.has(c.id))
-        .map((c, idx) => ({ contestant_id: c.id, rank: c.overall_rank || idx + 1 }));
-
-      await onCreate({
+      const payload = {
         event_id: event.id,
         round_name: roundName.trim(),
-        contestant_count: selectedIds.size,
-        qualifiers,
+        contestant_count: autoCompute ? contestantCount : selectedIds.size,
         qualifying_category_ids: qualifyingCategoryIds,
-      });
+      };
+
+      if (!autoCompute) {
+        payload.qualifiers = rankedContestants
+          .filter(c => selectedIds.has(c.id))
+          .map((c, idx) => ({ contestant_id: c.id, rank: c.overall_rank || idx + 1 }));
+      }
+
+      await onCreate(payload);
       onClose();
     } catch (err) {
       setError(err?.response?.data?.error || 'Failed to save round');
@@ -174,6 +178,18 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
             </div>
           )}
 
+          {/* Auto-compute toggle */}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoCompute}
+              onChange={e => setAutoCompute(e.target.checked)}
+              className="text-amber-600 focus:ring-amber-500"
+            />
+            Auto-compute qualifiers from qualifying categories
+          </label>
+
+          {!autoCompute && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-slate-700">
@@ -211,6 +227,7 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
               })}
             </div>
           </div>
+          )}
 
           {error && (
             <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</div>
@@ -223,7 +240,7 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || selectedIds.size === 0 || (!isEditMode && !roundName.trim())}
+            disabled={loading || (!autoCompute && selectedIds.size === 0) || (!isEditMode && !roundName.trim())}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
