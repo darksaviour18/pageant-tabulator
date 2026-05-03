@@ -114,15 +114,15 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
       .prepare('SELECT category_id, submitted, submitted_at, unlocked_by_admin FROM category_submissions WHERE judge_id = ?')
       .all(parseInt(judgeId, 10));
 
-    // Map to category IDs - include ALL submitted (even if unlocked by admin)
+    // Map to category IDs - only include submitted categories that are NOT unlocked by admin
     const submittedSet = new Set();
     const unlockedSet = new Set();
     for (const sub of submissions) {
-      if (sub.submitted) {
+      if (sub.unlocked_by_admin) {
+        unlockedSet.add(sub.category_id);
+      }
+      if (sub.submitted && !sub.unlocked_by_admin) {
         submittedSet.add(sub.category_id);
-        if (sub.unlocked_by_admin) {
-          unlockedSet.add(sub.category_id);
-        }
       }
     }
 
