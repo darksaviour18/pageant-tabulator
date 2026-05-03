@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { eventsService } from '../services/eventsService.js';
 import { categoriesService } from '../services/categoriesService.js';
 import { verifyAdmin } from './adminAuth.js';
-import { broadcastCategoryLock } from '../socket.js';
+import { broadcastCategoryLock, broadcastContestantsUpdated } from '../socket.js';
 import { getDb } from '../db/init.js';
+import { writeAuditLog } from '../services/auditService.js';
 
 const router = Router({ mergeParams: true });
 
@@ -70,7 +71,7 @@ router.get('/', (req, res, next) => {
  */
 router.patch('/:categoryId', verifyAdmin, async (req, res, next) => {
   const { categoryId } = req.params;
-  const { name, display_order, is_locked, weight } = req.body;
+  const { name, display_order, is_locked, weight, required_round_id } = req.body;
 
   try {
     const category = categoriesService.getById(parseInt(categoryId, 10));
@@ -78,19 +79,53 @@ router.patch('/:categoryId', verifyAdmin, async (req, res, next) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
+    // Validate required_round_id if being set (not if being cleared)
+    if (required_round_id !== undefined && required_round_id !== null) {
+      const db = getDb();
+      const round = db
+        .prepare('SELECT id, event_id FROM elimination_rounds WHERE id = ?')
+        .get(Number(required_round_id));
+
+      if (!round) {
+        return res.status(404).json({ error: 'Elimination round not found' });
+      }
+      if (round.event_id !== category.event_id) {
+        return res.status(400).json({
+          error: 'Elimination round does not belong to the same event as this category',
+        });
+      }
+    }
+
+    const previousRoundId = category.required_round_id;
+
     const updated = categoriesService.update(parseInt(categoryId, 10), {
       name: name?.trim(),
       display_order,
       is_locked,
       weight,
+      required_round_id,
     });
 
-    // 10.3.5: Broadcast category lock/unlock
-    if (is_locked !== undefined) {
-      const io = getIo(req);
-      if (io) {
-        broadcastCategoryLock(io, updated.id, !!is_locked);
-      }
+    const io = getIo(req);
+
+    if (is_locked !== undefined && io) {
+      broadcastCategoryLock(io, updated.id, !!is_locked);
+    }
+
+    const roundChanged =
+      required_round_id !== undefined &&
+      Number(required_round_id || 0) !== Number(previousRoundId || 0);
+    if (roundChanged && io) {
+      broadcastContestantsUpdated(io, updated.id, updated.required_round_id ?? null);
+    }
+
+    if (roundChanged) {
+      writeAuditLog(category.event_id, null, 'category_round_linked', {
+        category_id: updated.id,
+        category_name: updated.name,
+        previous_round_id: previousRoundId ?? null,
+        new_round_id: updated.required_round_id ?? null,
+      });
     }
 
     return res.json(updated);

@@ -49,7 +49,7 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
 
     // Get all categories with their criteria
     const categories = db
-      .prepare('SELECT id, name, display_order, is_locked FROM categories WHERE event_id = ? ORDER BY display_order')
+      .prepare('SELECT id, name, display_order, is_locked, required_round_id FROM categories WHERE event_id = ? ORDER BY display_order')
       .all(eventId);
 
     const categoriesWithCriteria = categories.map((cat) => ({
@@ -74,7 +74,7 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
 
 /**
  * GET /api/scoring/:judgeId/event/:eventId/category/:categoryId
- * Get all scores for a specific judge + category.
+ * Get all scores for a specific judge + category, with filtered contestants.
  */
 router.get('/:judgeId/event/:eventId/category/:categoryId', (req, res, next) => {
   const { judgeId, categoryId } = req.params;
@@ -88,20 +88,53 @@ router.get('/:judgeId/event/:eventId/category/:categoryId', (req, res, next) => 
       )
       .all(judgeId, categoryId);
 
-    // Check submission status
     const submission = db
       .prepare('SELECT submitted, submitted_at, unlocked_by_admin FROM category_submissions WHERE judge_id = ? AND category_id = ?')
       .get(judgeId, categoryId);
 
-    // submitted = true only if submitted AND not unlocked by admin
-    // If unlocked by admin, submitted = false (category is editable)
-    const submitted = submission?.submitted && !submission?.unlocked_by_admin;
+    const submitted = !!(submission?.submitted && !submission?.unlocked_by_admin);
+
+    const category = db
+      .prepare('SELECT required_round_id FROM categories WHERE id = ?')
+      .get(categoryId);
+
+    let contestants;
+    let requiredRoundId = null;
+    let requiredRoundName = null;
+
+    if (category?.required_round_id) {
+      requiredRoundId = category.required_round_id;
+
+      const round = db
+        .prepare('SELECT round_name FROM elimination_rounds WHERE id = ?')
+        .get(requiredRoundId);
+      requiredRoundName = round?.round_name ?? null;
+
+      contestants = db
+        .prepare(
+          `SELECT c.id, c.number, c.name
+           FROM contestants c
+           INNER JOIN round_qualifiers rq ON rq.contestant_id = c.id
+           WHERE rq.round_id = ? AND c.event_id = ? AND c.status = 'active'
+           ORDER BY c.number`
+        )
+        .all(requiredRoundId, parseInt(eventId, 10));
+    } else {
+      contestants = db
+        .prepare(
+          `SELECT id, number, name FROM contestants WHERE event_id = ? AND status = 'active' ORDER BY number`
+        )
+        .all(parseInt(eventId, 10));
+    }
 
     return res.json({
       scores,
       submitted,
-      submittedAt: submission?.submitted_at,
+      submittedAt: submission?.submitted_at ?? null,
       unlockedByAdmin: !!submission?.unlocked_by_admin,
+      contestants,
+      requiredRoundId,
+      requiredRoundName,
     });
   } catch (err) {
     next(err);
