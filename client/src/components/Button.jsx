@@ -1,27 +1,11 @@
 import { forwardRef } from 'react';
-import { useTheme } from '../context/ThemeContext';
 
 const variants = {
-  primary: {
-    light: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700',
-    dark: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600',
-  },
-  secondary: {
-    light: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200',
-    dark: 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700',
-  },
-  outline: {
-    light: 'bg-transparent text-slate-700 border border-slate-300 hover:bg-slate-50 hover:border-slate-400',
-    dark: 'bg-transparent text-zinc-300 border border-zinc-600 hover:bg-zinc-800 hover:border-zinc-500',
-  },
-  ghost: {
-    light: 'bg-transparent text-slate-600 hover:bg-slate-100',
-    dark: 'bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
-  },
-  danger: {
-    light: 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700',
-    dark: 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800',
-  },
+  primary: 'bg-[var(--color-cta)] hover:opacity-90 text-white',
+  secondary: 'bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] border border-[var(--color-border)]',
+  outline: 'bg-transparent text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-bg-subtle)] hover:border-[var(--color-cta)]',
+  ghost: 'bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text)]',
+  danger: 'bg-red-500 hover:bg-red-600 text-white',
 };
 
 const sizes = {
@@ -43,9 +27,7 @@ const Button = forwardRef(function Button(
   },
   ref
 ) {
-  const { isDark } = useTheme();
-
-  const variantClasses = variants[variant]?.[isDark ? 'dark' : 'light'] || variants.primary[isDark ? 'dark' : 'light'];
+  const variantClass = variants[variant] || variants.primary;
   const sizeClasses = sizes[size];
 
   const disabledClasses = disabled || loading
@@ -59,8 +41,8 @@ const Button = forwardRef(function Button(
       className={`
         inline-flex items-center justify-center gap-2 font-medium rounded-lg
         transition-all duration-150 ease-out
-        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500
-        ${variantClasses}
+        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-cta)]
+        ${variantClass}
         ${sizeClasses}
         ${disabledClasses}
         ${className}

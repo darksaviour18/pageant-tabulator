@@ -2,7 +2,10 @@ import { AlertTriangle, X } from 'lucide-react';
 
 export default function SubmitConfirmModal({ categoryName, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       
       <div 
@@ -18,6 +21,7 @@ export default function SubmitConfirmModal({ categoryName, onConfirm, onCancel }
           <button
             onClick={onCancel}
             className="transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            autoFocus
           >
             <X className="w-5 h-5" />
           </button>

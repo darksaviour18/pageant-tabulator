@@ -116,19 +116,22 @@ export default function ScoreSheet({
     
     const loadPhotos = async () => {
       setLoadingPhotos(true);
-      const photos = {};
-      for (const c of contestants) {
+      const results = await Promise.all(contestants.map(async (c) => {
         try {
           const res = await fetch(`/api/events/${eventId}/contestants/${c.id}/photo`);
           if (res.ok) {
             const blob = await res.blob();
-            photos[c.id] = URL.createObjectURL(blob);
+            return { id: c.id, url: URL.createObjectURL(blob) };
           }
         } catch {
           // No photo
         }
+        return { id: c.id, url: null };
+      }));
+      const photos = {};
+      for (const r of results) {
+        if (r.url) photos[r.id] = r.url;
       }
-      // Update both state (for rendering) and ref (for cleanup)
       contestantPhotosRef.current = photos;
       setContestantPhotos(photos);
       setLoadingPhotos(false);
@@ -243,6 +246,18 @@ export default function ScoreSheet({
     );
   }, [contestants, criteria, getScore]);
 
+  const totalCells = contestants.length * criteria.length;
+  const filledCount = useMemo(() => {
+    let count = 0;
+    for (const c of contestants) {
+      for (const crit of criteria) {
+        const val = getScore(c.id, crit.id);
+        if (val !== null && val !== undefined) count++;
+      }
+    }
+    return count;
+  }, [contestants, criteria, getScore]);
+
   // 10.3.8: Listen for contestant_added event — notify parent to refetch
   useEffect(() => {
     const unsub = onEvent('contestant_added', () => {
@@ -298,7 +313,7 @@ export default function ScoreSheet({
           <button
             onClick={handleInitiateSubmit}
             disabled={!allFilled || effectiveReadOnly}
-            className="flex items-center gap-2 px-5 py-2 bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 min-h-[44px] bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
           >
             {submitting ? (
               <>
@@ -379,6 +394,32 @@ export default function ScoreSheet({
         </div>
       </div>
 
+      {/* Sticky Bottom Submit Bar */}
+      {!effectiveReadOnly && (
+        <div className="sticky bottom-0 z-20 bg-[var(--color-bg)] border-t border-[var(--color-border)] px-4 py-3 flex items-center justify-end gap-3 shadow-lg">
+          <span className="text-xs text-[var(--color-text-muted)]">
+            {allFilled ? 'All fields filled' : `${filledCount} of ${totalCells} filled`}
+          </span>
+          <button
+            onClick={handleInitiateSubmit}
+            disabled={!allFilled}
+            className="flex items-center gap-2 px-6 min-h-[44px] bg-[var(--color-cta)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Submit Category
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Submit Confirmation Modal */}
       {showSubmitModal && (
         <SubmitConfirmModal
@@ -403,10 +444,12 @@ export default function ScoreSheet({
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
           onClick={() => setSelectedContestant(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setSelectedContestant(null); }}
         >
           <button
             className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors"
             onClick={() => setSelectedContestant(null)}
+            autoFocus
           >
             <X className="w-6 h-6" />
           </button>
