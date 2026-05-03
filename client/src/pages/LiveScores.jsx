@@ -20,6 +20,10 @@ export default function LiveScores() {
   const [highlightedCells, setHighlightedCells] = useState(new Set());
   const abortRef = useRef(false);
   const catDataRef = useRef(catData);
+  const handleRoundChangeRef = useRef(handleRoundChange);
+  const fetchAbortRef = useRef(null);
+
+  useEffect(() => { handleRoundChangeRef.current = handleRoundChange; });
 
   useEffect(() => {
     abortRef.current = false;
@@ -81,6 +85,11 @@ export default function LiveScores() {
     setContestants([]);
 
     if (!rId) { setRound(null); setQualifyingCatIds([]); return; }
+
+    // Abort any in-flight fetch from previous round selection
+    if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
 
     setLoading(true);
     try {
@@ -219,7 +228,7 @@ export default function LiveScores() {
       // Only process events for qualifying categories
       if (!qualifyingCatIds.includes(catId)) return;
 
-      const key = `${catId}:${data.judge_id}:${data.contestant_id}`;
+      const key = `${catId}:c:${data.contestant_id}`;
       setCatData(prev => {
         const next = { ...prev };
         if (!next[catId]) return prev;
@@ -249,13 +258,19 @@ export default function LiveScores() {
       if (eventId) loadJudges(parseInt(eventId, 10));
     });
 
-    return () => { unsubScore(); unsubJudgeConnected(); };
+    const unsubContestantsUpdated = onEvent('contestants_updated', () => {
+      if (selectedRoundId) {
+        handleRoundChangeRef.current?.({ target: { value: selectedRoundId } });
+      }
+    });
+
+    return () => { unsubScore(); unsubJudgeConnected(); unsubContestantsUpdated(); };
   }, [onEvent, selectedRoundId, eventId, qualifyingCatIds]);
 
   // Re-fetch on reconnect
   useEffect(() => {
     if (lastSync && selectedRoundId) {
-      handleRoundChange({ target: { value: selectedRoundId } });
+      handleRoundChangeRef.current?.({ target: { value: selectedRoundId } });
     }
   }, [lastSync]);
 
