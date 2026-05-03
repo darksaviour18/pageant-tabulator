@@ -178,7 +178,8 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
             </div>
           )}
 
-          {/* Auto-compute toggle */}
+          {/* Auto-compute toggle — only available when creating a new round */}
+          {!isEditMode && (
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
@@ -188,6 +189,7 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
             />
             Auto-compute qualifiers from qualifying categories
           </label>
+          )}
 
           {!autoCompute && (
           <div>
