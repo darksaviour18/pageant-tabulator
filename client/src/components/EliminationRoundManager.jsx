@@ -501,8 +501,13 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
                         </p>
                         <div className="space-y-1">
                           {(() => {
-                            const qualifyingIds = Array.isArray(round.qualifying_category_ids) ? round.qualifying_category_ids
-                              : (typeof round.qualifying_category_ids === 'string' ? JSON.parse(round.qualifying_category_ids) : []);
+                            let qualifyingIds;
+                            try {
+                              qualifyingIds = Array.isArray(round.qualifying_category_ids) ? round.qualifying_category_ids
+                                : (typeof round.qualifying_category_ids === 'string' ? JSON.parse(round.qualifying_category_ids) : []);
+                            } catch {
+                              qualifyingIds = [];
+                            }
                             return categories.map(cat => {
                               const isChecked = qualifyingIds.includes(cat.id);
                               return (
@@ -514,7 +519,6 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
                                     checked={isChecked}
                                     disabled={linkingBusy}
                                     onChange={async () => {
-                                      setLinkingBusy(true);
                                       const next = isChecked
                                         ? qualifyingIds.filter(id => id !== cat.id)
                                         : [...qualifyingIds, cat.id];
@@ -522,6 +526,7 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
                                         setError('At least one qualifying category is required.');
                                         return;
                                       }
+                                      setLinkingBusy(true);
                                       try {
                                         await eliminationRoundsAPI.update(round.id, { qualifying_category_ids: next });
                                         await loadRounds();
