@@ -119,20 +119,21 @@ export function useAutoSave({ judgeId, eventId, categoryId }) {
         const localMap = new Map(localScores.map(s => [`${s.contestantId}:${s.criteriaId}`, s.score]));
         const serverMap = new Map(serverScores.map(s => [`${s.contestant_id}:${s.criteria_id}`, s.score]));
 
-        // Check for differences
-        let hasConflict = false;
+        // Collect differences with per-entry detail
+        const diffs = [];
         for (const [key, localScore] of localMap) {
           const serverScore = serverMap.get(key);
           if (serverScore !== undefined && Math.abs(serverScore - localScore) > 0.01) {
-            hasConflict = true;
-            break;
+            const [contestantId, criteriaId] = key.split(':').map(Number);
+            diffs.push({ contestantId, criteriaId, localScore, serverScore });
           }
         }
 
-        if (hasConflict) {
+        if (diffs.length > 0) {
           setConflict({
             localCount: localScores.length,
             serverCount: serverScores.length,
+            diffs,
           });
         } else if (queueRef.current.size > 0) {
           flushQueue();

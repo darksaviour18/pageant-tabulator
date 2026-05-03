@@ -3,15 +3,28 @@ import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 export default function ConflictModal({
   localCount,
   serverCount,
+  diffs = [],
+  contestants = [],
+  criteria = [],
   onKeepLocal,
   onDiscardLocal,
 }) {
+  const contestantName = (id) => {
+    const c = contestants.find((c) => c.id === id);
+    return c ? `#${c.number} ${c.name}` : `Contestant #${id}`;
+  };
+
+  const criterionName = (id) => {
+    const c = criteria.find((c) => c.id === id);
+    return c ? c.name : `Criterion #${id}`;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       
       <div 
-        className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-200 bg-[var(--bg-primary)] border border-[var(--border-color)]"
+        className="relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-200 bg-[var(--bg-primary)] border border-[var(--border-color)]"
       >
         <div className="flex items-center gap-3 px-6 py-4 bg-[var(--bg-tertiary)] border-b border-[var(--border-color)]">
           <AlertTriangle className="w-5 h-5 text-[var(--color-warning)]" />
@@ -42,6 +55,33 @@ export default function ConflictModal({
               </div>
             </div>
           </div>
+
+          {diffs.length > 0 && (
+            <div className="border border-[var(--border-color)] rounded-lg overflow-hidden">
+              <div className="text-xs font-medium text-[var(--text-muted)] px-3 py-2 bg-[var(--bg-secondary)] border-b border-[var(--border-color)]">
+                {diffs.length} score{diffs.length > 1 ? 's' : ''} differ{diffs.length === 1 ? 's' : ''}
+              </div>
+              <div className="max-h-40 overflow-y-auto divide-y divide-[var(--border-color)]">
+                {diffs.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-[var(--text-primary)] truncate">
+                        {contestantName(d.contestantId)}
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)]">
+                        {criterionName(d.criteriaId)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3">
+                      <span className="text-[var(--color-warning)] font-medium">{d.localScore}</span>
+                      <span className="text-[var(--text-muted)] text-xs">→</span>
+                      <span className="text-[var(--text-primary)] font-medium">{d.serverScore}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]">

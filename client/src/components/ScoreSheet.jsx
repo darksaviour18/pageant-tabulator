@@ -443,6 +443,9 @@ export default function ScoreSheet({
         <ConflictModal
           localCount={conflict.localCount}
           serverCount={conflict.serverCount}
+          diffs={conflict.diffs}
+          contestants={contestants}
+          criteria={criteria}
           onKeepLocal={() => resolveConflict('keep-local')}
           onDiscardLocal={() => resolveConflict('discard-local')}
         />
