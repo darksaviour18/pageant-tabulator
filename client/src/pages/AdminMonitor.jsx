@@ -280,6 +280,8 @@ export default function AdminMonitor() {
         ...prev,
         scores: res.data.scores || [],
         contestants: res.data.contestants || [],
+        criteria: cat.criteria || [],
+        scoring_mode: event?.scoring_mode || 'direct',
         submitted: res.data.submitted || false,
         unlockedByAdmin: res.data.unlockedByAdmin || false,
       }));
@@ -458,24 +460,54 @@ export default function AdminMonitor() {
 
 /**
  * 11.6.1: Score preview modal — shows a judge's draft scores for a category.
+ * Contestants are rows, criteria are columns, total column on the right.
  */
 function ScorePreviewModal({ preview, onClose }) {
   if (!preview) return null;
 
-  const { judge, category, scores, submitted, unlockedByAdmin } = preview;
-
-  // Build a matrix: rows = criteria, columns = contestants with scores
+  const { judge, category, scores, submitted, unlockedByAdmin, scoring_mode } = preview;
   const contestants = preview.contestants || [];
-  const criteriaMap = {};
+  const criteria = preview.criteria || category.criteria || [];
+
+  // Build matrix: { contestantId: { criteriaId: score } }
   const contestantScores = {};
   for (const s of scores) {
     if (!contestantScores[s.contestant_id]) contestantScores[s.contestant_id] = {};
     contestantScores[s.contestant_id][s.criteria_id] = s.score;
   }
 
+  // Compute total per contestant
+  const computeTotal = (contestantId) => {
+    let sum = 0;
+    let hasScore = false;
+    for (const crit of criteria) {
+      const val = contestantScores[contestantId]?.[crit.id];
+      if (val !== undefined && val !== null) {
+        if (scoring_mode === 'weighted') {
+          sum += val * crit.weight;
+        } else {
+          sum += val;
+        }
+        hasScore = true;
+      }
+    }
+    if (!hasScore) return null;
+    // Scale weighted totals to 0-100 for consistent display
+    return scoring_mode === 'weighted' ? Math.round(sum * 10 * 100) / 100 : Math.round(sum * 100) / 100;
+  };
+
+  // Max possible total
+  const maxTotal = scoring_mode === 'weighted' ? 100 : criteria.reduce((s, c) => s + c.max_score, 0);
+
+  // Max score per criterion
+  const criterionMax = (crit) => crit.max_score;
+
+  // Find the actual contestant IDs that have scores
+  const scoredContestantIds = [...new Set(scores.map(s => s.contestant_id))];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl bg-[var(--color-bg-subtle)] rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-3xl bg-[var(--color-bg-subtle)] rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between bg-[var(--color-bg)] px-6 py-4 border-b border-[var(--color-border)]">
           <div>
@@ -505,35 +537,44 @@ function ScorePreviewModal({ preview, onClose }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--color-border)]">
+                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg)]">
                     <th className="text-left py-2 px-3 text-[var(--color-text-muted)] font-medium">Contestant</th>
-                    {Object.keys(contestantScores).map((cid) => {
-                      const c = contestants.find((ct) => ct.id === parseInt(cid));
-                      return (
-                        <th key={cid} className="text-center py-2 px-3 text-[var(--color-text-muted)] font-medium">
-                          {c ? `#${c.number}` : `#?`}
-                        </th>
-                      );
-                    })}
+                    {criteria.map((crit) => (
+                      <th key={crit.id} className="text-center py-2 px-3 text-[var(--color-text-muted)] font-medium">
+                        <div>{crit.name}</div>
+                        <div className="text-[10px] opacity-60">0–{criterionMax(crit)}</div>
+                      </th>
+                    ))}
+                    <th className="text-center py-2 px-3 text-[var(--color-text-muted)] font-medium">
+                      <div>Total</div>
+                      <div className="text-[10px] opacity-60">0–{maxTotal}</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {category.criteria?.map((crit) => (
-                    <tr key={crit.id} className="border-b border-[var(--color-border)]">
-                      <td className="py-2 px-3 text-[var(--color-text)] font-medium">{crit.name}</td>
-                      {Object.keys(contestantScores).map((cid) => (
-                        <td key={`${cid}-${crit.id}`} className="py-2 px-3 text-center">
-                          {contestantScores[cid]?.[crit.id] !== undefined ? (
-                            <span className="font-mono text-[var(--color-text)]">
-                              {contestantScores[cid][crit.id]}
-                            </span>
-                          ) : (
-                            <span className="text-[var(--color-text-muted)]">—</span>
-                          )}
+                  {scoredContestantIds.map((cid) => {
+                    const c = contestants.find((ct) => ct.id === parseInt(cid));
+                    const total = computeTotal(parseInt(cid));
+                    return (
+                      <tr key={cid} className="border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition-colors">
+                        <td className="py-2 px-3 text-[var(--color-text)] font-medium whitespace-nowrap">
+                          {c ? `#${c.number} ${c.name}` : `#${cid}`}
                         </td>
-                      ))}
-                    </tr>
-                  ))}
+                        {criteria.map((crit) => (
+                          <td key={`${cid}-${crit.id}`} className="py-2 px-3 text-center">
+                            {contestantScores[cid]?.[crit.id] !== undefined ? (
+                              <span className="font-mono text-[var(--color-text)]">{contestantScores[cid][crit.id]}</span>
+                            ) : (
+                              <span className="text-[var(--color-text-muted)]">—</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="py-2 px-3 text-center font-bold font-mono text-[var(--color-text)]">
+                          {total !== null ? total.toFixed(1) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
