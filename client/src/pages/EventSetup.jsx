@@ -21,19 +21,28 @@ export default function EventSetup() {
     if (selectedEvent) {
       setEventName(selectedEvent.name);
       setStatus(selectedEvent.status);
-      setScoringMode(selectedEvent.scoring_mode || 'direct');
-      setHasScores(!!selectedEvent.has_scores);
       setTabulators(selectedEvent.tabulators ? JSON.parse(selectedEvent.tabulators).map(t => t.name).join('\n') : '');
       setIsEditing(true);
     } else {
       setEventName('');
       setStatus('active');
-      setScoringMode('direct');
-      setHasScores(false);
       setTabulators('');
       setIsEditing(false);
     }
   }, [selectedEvent]);
+
+  // Fetch event detail for has_scores (not included in list endpoint)
+  useEffect(() => {
+    if (selectedEventId) {
+      eventsAPI.getById(selectedEventId).then(res => {
+        setHasScores(!!res.data.has_scores);
+        setScoringMode(res.data.scoring_mode || 'direct');
+      }).catch(() => {});
+    } else {
+      setHasScores(false);
+      setScoringMode('direct');
+    }
+  }, [selectedEventId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
