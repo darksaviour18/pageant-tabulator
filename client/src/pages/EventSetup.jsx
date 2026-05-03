@@ -10,6 +10,8 @@ export default function EventSetup() {
   const [eventName, setEventName] = useState('');
   const [status, setStatus] = useState('active');
   const [tabulators, setTabulators] = useState('');
+  const [scoringMode, setScoringMode] = useState('direct');
+  const [hasScores, setHasScores] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -19,11 +21,15 @@ export default function EventSetup() {
     if (selectedEvent) {
       setEventName(selectedEvent.name);
       setStatus(selectedEvent.status);
+      setScoringMode(selectedEvent.scoring_mode || 'direct');
+      setHasScores(!!selectedEvent.has_scores);
       setTabulators(selectedEvent.tabulators ? JSON.parse(selectedEvent.tabulators).map(t => t.name).join('\n') : '');
       setIsEditing(true);
     } else {
       setEventName('');
       setStatus('active');
+      setScoringMode('direct');
+      setHasScores(false);
       setTabulators('');
       setIsEditing(false);
     }
@@ -49,10 +55,11 @@ export default function EventSetup() {
         .map(name => ({ name }));
 
       if (isEditing && selectedEventId) {
-        const res = await eventsAPI.update(selectedEventId, { name: eventName, status, tabulators: tabulatorList });
+        const res = await eventsAPI.update(selectedEventId, { name: eventName, status, tabulators: tabulatorList, scoring_mode: scoringMode });
         setSelectedEventId(res.data.id);
         setEventName(res.data.name);
         setStatus(res.data.status);
+        setScoringMode(res.data.scoring_mode || 'direct');
         setSuccess('Event updated successfully');
         refreshEvents();
       } else {
@@ -114,6 +121,44 @@ export default function EventSetup() {
                 className="w-full px-4 py-2.5 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] focus:border-[var(--color-cta)] outline-none resize-none transition bg-[var(--color-bg)] text-[var(--color-text)]"
               />
               <p className="text-xs text-[var(--color-text-muted)] mt-1">These names appear on report footprints when "Tabulators" signature type is selected.</p>
+            </div>
+          )}
+          {isEditing && (
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Scoring Mode
+              </label>
+              <div className="flex gap-4">
+                <label className={`flex items-center gap-2 ${hasScores ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input
+                    type="radio"
+                    name="scoring_mode"
+                    value="direct"
+                    checked={scoringMode === 'direct'}
+                    onChange={() => setScoringMode('direct')}
+                    disabled={hasScores}
+                    className="text-[var(--color-cta)] focus:ring-[var(--color-cta)]"
+                  />
+                  <span className="text-sm text-[var(--color-text)]">Direct by Weight</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">Score up to weight-based max (0-40, 0-60, etc.). Total sums to 100.</span>
+                </label>
+                <label className={`flex items-center gap-2 ${hasScores ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input
+                    type="radio"
+                    name="scoring_mode"
+                    value="weighted"
+                    checked={scoringMode === 'weighted'}
+                    onChange={() => setScoringMode('weighted')}
+                    disabled={hasScores}
+                    className="text-[var(--color-cta)] focus:ring-[var(--color-cta)]"
+                  />
+                  <span className="text-sm text-[var(--color-text)]">Standard (1-10)</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">Score each criterion 1-10. Weight determines contribution to total.</span>
+                </label>
+              </div>
+              {hasScores && (
+                <p className="text-xs text-amber-500 mt-1">Scoring mode cannot be changed after judging has started.</p>
+              )}
             </div>
           )}
           {isEditing && (
