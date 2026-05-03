@@ -7,17 +7,19 @@ export default function LiveScores() {
   const { onEvent, connected, lastSync } = useSocket();
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [rounds, setRounds] = useState([]);
+  const [selectedRoundId, setSelectedRoundId] = useState('');
   const [judges, setJudges] = useState([]);
   const [contestants, setContestants] = useState([]);
-  const [criteria, setCriteria] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [qualifyingCatIds, setQualifyingCatIds] = useState([]);
+  const [catData, setCatData] = useState({}); // { catId: { scores, criteria, scoringMode } }
   const [scoringMode, setScoringMode] = useState('direct');
-  const [scores, setScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [round, setRound] = useState(null);
   const [highlightedCells, setHighlightedCells] = useState(new Set());
   const abortRef = useRef(false);
+  const catDataRef = useRef(catData);
 
   useEffect(() => {
     abortRef.current = false;
@@ -27,31 +29,23 @@ export default function LiveScores() {
       const active = all.find(e => e.status === 'active');
       if (active) {
         setEventId(String(active.id));
-        loadCategories(active.id);
+        loadRounds(active.id);
         loadJudges(active.id);
       }
     }).catch(() => {}).finally(() => setLoading(false));
     return () => { abortRef.current = true; };
   }, []);
 
-  const loadCategories = async (id) => {
+  const loadRounds = async (id) => {
     try {
-      const [catsRes, roundsRes] = await Promise.all([
-        categoriesAPI.getAll(parseInt(id, 10)),
+      const [roundsRes, catsRes] = await Promise.all([
         eliminationRoundsAPI.getAll(parseInt(id, 10)),
+        categoriesAPI.getAll(parseInt(id, 10)),
       ]);
+      setRounds(roundsRes.data || []);
       setCategories(catsRes.data || []);
-      const rounds = roundsRes.data || [];
-      if (selectedCategoryId) {
-        const cat = (catsRes.data || []).find(c => c.id === parseInt(selectedCategoryId));
-        if (cat?.required_round_id) {
-          setRound(rounds.find(r => r.id === cat.required_round_id) || null);
-        } else {
-          setRound(null);
-        }
-      }
     } catch (err) {
-      console.error('[LiveScores] Failed to load categories:', err);
+      console.error('[LiveScores] Failed to load rounds:', err);
     }
   };
 
@@ -68,157 +62,176 @@ export default function LiveScores() {
   const handleEventChange = async (e) => {
     const id = e.target.value;
     setEventId(id);
-    setSelectedCategoryId('');
-    setScores({});
+    setSelectedRoundId('');
+    setCatData({});
     setRound(null);
-    setCriteria([]);
     setContestants([]);
+    setQualifyingCatIds([]);
     if (id) {
       setLoading(true);
-      await Promise.all([loadCategories(id), loadJudges(id)]);
+      await Promise.all([loadRounds(id), loadJudges(id)]);
       setLoading(false);
     }
   };
 
-  const handleCategoryChange = async (e) => {
-    const catId = e.target.value;
-    setSelectedCategoryId(catId);
-    setScores({});
-    setRound(null);
-    if (!catId) { setCriteria([]); setContestants([]); return; }
+  const handleRoundChange = async (e) => {
+    const rId = e.target.value;
+    setSelectedRoundId(rId);
+    setCatData({});
+    setContestants([]);
+
+    if (!rId) { setRound(null); setQualifyingCatIds([]); return; }
 
     setLoading(true);
     try {
-      const cat = categories.find(c => c.id === parseInt(catId));
-      setCriteria(cat?.criteria || []);
+      const r = rounds.find(rr => rr.id === parseInt(rId));
+      if (!r) { setLoading(false); return; }
+      setRound(r);
 
-      if (eventId) {
-        const evRes = await eventsAPI.getById(parseInt(eventId, 10));
-        setScoringMode(evRes.data?.scoring_mode || 'direct');
+      let qIds;
+      if (Array.isArray(r.qualifying_category_ids)) {
+        qIds = r.qualifying_category_ids;
+      } else if (typeof r.qualifying_category_ids === 'string') {
+        qIds = JSON.parse(r.qualifying_category_ids);
+      } else {
+        qIds = [];
+      }
+      setQualifyingCatIds(qIds);
+
+      if (!qIds.length) { setLoading(false); return; }
+
+      // Fetch scores for ALL qualifying categories in parallel
+      const scorePromises = qIds.map(catId =>
+        scoresAPI.getAllByEventAndCategory(parseInt(eventId, 10), catId)
+          .then(res => ({ catId, data: res.data || [] }))
+          .catch(() => ({ catId, data: [] }))
+      );
+
+      // Fetch event scoring mode once
+      const evRes = await eventsAPI.getById(parseInt(eventId, 10));
+      const mode = evRes.data?.scoring_mode || 'direct';
+      setScoringMode(mode);
+
+      const scoreResults = await Promise.all(scorePromises);
+
+      const data = {};
+      const contestantSet = new Set();
+
+      // Build per-category score matrices
+      for (const { catId, data: rawScores } of scoreResults) {
+        const matrix = {};
+        for (const s of rawScores) {
+          if (!matrix[s.judge_id]) matrix[s.judge_id] = {};
+          if (!matrix[s.judge_id][s.contestant_id]) matrix[s.judge_id][s.contestant_id] = {};
+          matrix[s.judge_id][s.contestant_id][s.criteria_id] = s.score;
+          contestantSet.add(s.contestant_id);
+        }
+
+        // Get criteria for this category
+        const cat = categories.find(c => c.id === catId);
+        data[catId] = {
+          scores: matrix,
+          criteria: cat?.criteria || [],
+          maxScore: (cat?.criteria || []).reduce((s, crit) => s + crit.max_score, 0),
+          scoringMode: mode,
+        };
       }
 
-      if (cat?.required_round_id) {
-        const roundsRes = await eliminationRoundsAPI.getAll(parseInt(eventId, 10));
-        setRound((roundsRes.data || []).find(rr => rr.id === cat.required_round_id) || null);
-      }
+      setCatData(data);
+      catDataRef.current = data;
 
-      const scoresRes = await scoresAPI.getAllByEventAndCategory(parseInt(eventId, 10), parseInt(catId, 10));
-      const rawScores = scoresRes.data || [];
-
-      const matrix = {};
-      for (const s of rawScores) {
-        if (!matrix[s.judge_id]) matrix[s.judge_id] = {};
-        if (!matrix[s.judge_id][s.contestant_id]) matrix[s.judge_id][s.contestant_id] = {};
-        matrix[s.judge_id][s.contestant_id][s.criteria_id] = s.score;
-      }
-      setScores(matrix);
-
+      // Build contestant list (intersection of all qualifying categories + round qualifiers)
+      // Use the first qualifying category's context to get contestants
+      const { scoringAPI } = await import('../api');
       if (judges.length > 0) {
-        const { scoringAPI } = await import('../api');
         const ctxRes = await scoringAPI.getContext(judges[0].id, parseInt(eventId, 10));
         const allContestants = ctxRes.data?.contestants || [];
-
-        if (cat?.required_round_id) {
-          const qRes = await eliminationRoundsAPI.getQualifiers(cat.required_round_id);
-          const qualifierIds = (qRes.data?.qualifiers || []).map(q => q.contestant_id);
-          setContestants(allContestants.filter(c => qualifierIds.includes(c.id)));
-        } else {
-          setContestants(allContestants);
-        }
+        setContestants(allContestants.filter(c => contestantSet.has(c.id)));
       }
     } catch (err) {
-      console.error('[LiveScores] Failed to load category data:', err);
+      console.error('[LiveScores] Failed to load round data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Compute per-judge total for a contestant, normalized to 0-100
-  const judgeTotal = useCallback((judgeId, contestantId) => {
-    if (!scores[judgeId]?.[contestantId]) return null;
-    let total = 0;
-    let hasScore = false;
-    for (const crit of criteria) {
-      const val = scores[judgeId]?.[contestantId]?.[crit.id];
-      if (val !== null && val !== undefined) {
-        if (scoringMode === 'weighted') {
-          total += val * crit.weight;
-        } else {
-          total += val;
+  // Compute per-category total for a contestant (sum across all judges)
+  const categoryTotal = useCallback((catId, contestantId) => {
+    const d = catData[catId];
+    if (!d) return null;
+    let total = 0, hasScore = false;
+    for (const crit of d.criteria) {
+      for (const judgeId of Object.keys(d.scores)) {
+        const val = d.scores[judgeId]?.[contestantId]?.[crit.id];
+        if (val !== null && val !== undefined) {
+          if (d.scoringMode === 'weighted') {
+            total += val * crit.weight;
+          } else {
+            total += val;
+          }
+          hasScore = true;
         }
-        hasScore = true;
       }
     }
-    if (!hasScore) return null;
-    // Normalize weighted mode to 0-100 for consistent display
-    return scoringMode === 'weighted' ? Math.round(total * 10 * 10) / 10 : Math.round(total * 10) / 10;
-  }, [scores, criteria, scoringMode]);
+    return hasScore ? total : null;
+  }, [catData]);
 
-  // Client-side ranking engine — matches server _calculateRankings
-  const computeRanks = useCallback((scoresMatrix, contestantsList, criteriaList, mode) => {
-    const ranked = contestantsList.map(c => {
-      let total = 0;
-      for (const crit of criteriaList) {
-        let sum = 0, count = 0;
-        for (const judgeId of Object.keys(scoresMatrix)) {
-          const val = scoresMatrix[judgeId]?.[c.id]?.[crit.id];
-          if (val !== null && val !== undefined) { sum += val; count++; }
+  // Compute cross-category ranking — identical to server generateCrossCategoryReport
+  const crossCategoryRanks = useMemo(() => {
+    if (!qualifyingCatIds.length || !contestants.length) return [];
+
+    const catWeight = 1 / qualifyingCatIds.length; // equal weight per category
+    const ranked = contestants.map(c => {
+      let weightedTotal = 0;
+      for (const catId of qualifyingCatIds) {
+        const total = categoryTotal(catId, c.id);
+        if (total !== null) {
+          weightedTotal += total * catWeight;
         }
-        const avg = count > 0 ? sum / count : 0;
-        total += mode === 'weighted' ? avg * crit.weight : avg;
       }
       return {
         contestant: c,
-        total_score: Math.round(total * 1000) / 1000,
+        weighted_total: Math.round(weightedTotal * 1000) / 1000,
       };
     });
 
     ranked.sort((a, b) => {
-      if (b.total_score !== a.total_score) return b.total_score - a.total_score;
+      if (b.weighted_total !== a.weighted_total) return b.weighted_total - a.weighted_total;
       return a.contestant.number - b.contestant.number;
     });
 
     let currentRank = 1;
     for (let i = 0; i < ranked.length; i++) {
-      if (i > 0 && ranked[i].total_score < ranked[i - 1].total_score) {
+      if (i > 0 && ranked[i].weighted_total < ranked[i - 1].weighted_total) {
         currentRank = i + 1;
       }
       ranked[i].rank = currentRank;
     }
     return ranked;
-  }, []);
-
-  const rankedContestants = useMemo(
-    () => computeRanks(scores, contestants, criteria, scoringMode),
-    [scores, contestants, criteria, scoringMode, computeRanks]
-  );
-
-  // Compute average per contestant (average of per-judge totals)
-  const contestantAvg = useCallback((contestantId) => {
-    let sum = 0, count = 0;
-    for (const judgeId of Object.keys(scores)) {
-      const total = judgeTotal(judgeId, contestantId);
-      if (total !== null) { sum += total; count++; }
-    }
-    return count > 0 ? Math.round((sum / count) * 10) / 10 : null;
-  }, [scores, judgeTotal]);
+  }, [qualifyingCatIds, contestants, categoryTotal]);
 
   // WebSocket listeners
   useEffect(() => {
-    if (!selectedCategoryId || !eventId) return;
+    if (!selectedRoundId || !eventId) return;
 
     const unsubScore = onEvent('score_updated', (data) => {
-      if (String(data.category_id) !== selectedCategoryId) return;
+      const catId = data.category_id;
+      // Only process events for qualifying categories
+      if (!qualifyingCatIds.includes(catId)) return;
 
-      const key = `${data.judge_id}:${data.contestant_id}`;
-      setScores(prev => {
+      const key = `${catId}:${data.judge_id}:${data.contestant_id}`;
+      setCatData(prev => {
         const next = { ...prev };
-        if (!next[data.judge_id]) next[data.judge_id] = {};
-        if (!next[data.judge_id][data.contestant_id]) next[data.judge_id][data.contestant_id] = {};
-        next[data.judge_id][data.contestant_id] = {
-          ...next[data.judge_id][data.contestant_id],
+        if (!next[catId]) return prev;
+        const scores = { ...next[catId].scores };
+        if (!scores[data.judge_id]) scores[data.judge_id] = {};
+        if (!scores[data.judge_id][data.contestant_id]) scores[data.judge_id][data.contestant_id] = {};
+        scores[data.judge_id][data.contestant_id] = {
+          ...scores[data.judge_id][data.contestant_id],
           [data.criteria_id]: data.score,
         };
+        next[catId] = { ...next[catId], scores };
+        catDataRef.current = next;
         return next;
       });
 
@@ -232,23 +245,17 @@ export default function LiveScores() {
       }, 500);
     });
 
-    const unsubContestants = onEvent('contestants_updated', (data) => {
-      if (String(data.categoryId) === selectedCategoryId) {
-        handleCategoryChange({ target: { value: selectedCategoryId } });
-      }
-    });
-
     const unsubJudgeConnected = onEvent('judge_connected', () => {
       if (eventId) loadJudges(parseInt(eventId, 10));
     });
 
-    return () => { unsubScore(); unsubContestants(); unsubJudgeConnected(); };
-  }, [onEvent, selectedCategoryId, eventId]);
+    return () => { unsubScore(); unsubJudgeConnected(); };
+  }, [onEvent, selectedRoundId, eventId, qualifyingCatIds]);
 
   // Re-fetch on reconnect
   useEffect(() => {
-    if (lastSync && selectedCategoryId) {
-      handleCategoryChange({ target: { value: selectedCategoryId } });
+    if (lastSync && selectedRoundId) {
+      handleRoundChange({ target: { value: selectedRoundId } });
     }
   }, [lastSync]);
 
@@ -262,13 +269,12 @@ export default function LiveScores() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Eye className="w-6 h-6 text-[var(--color-cta)]" />
           <div>
             <h2 className="text-lg font-bold text-[var(--color-text)]">Live Scores</h2>
-            <p className="text-xs text-[var(--color-text-muted)]">Consolidated judge scores updating in real-time</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Real-time cross-category rankings</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -284,7 +290,6 @@ export default function LiveScores() {
         </div>
       </div>
 
-      {/* Controls */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">Event</label>
@@ -297,32 +302,33 @@ export default function LiveScores() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">Category</label>
-          <select value={selectedCategoryId} onChange={handleCategoryChange}
-            className="px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[200px] text-sm">
-            <option value="">Select category...</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}{c.required_round_id ? ' 🏆' : ''}</option>
+          <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">Elimination Round</label>
+          <select value={selectedRoundId} onChange={handleRoundChange}
+            className="px-3 py-2 border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] outline-none bg-[var(--color-bg-subtle)] text-[var(--color-text)] min-w-[250px] text-sm">
+            <option value="">Select a round...</option>
+            {rounds.map(r => (
+              <option key={r.id} value={r.id}>{r.round_name} ({r.contestant_count} contestants)</option>
             ))}
           </select>
         </div>
         {round && (
           <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-            🏆 {round.round_name} — only {round.contestant_count} qualifiers
+            🏆 {round.round_name} — {round.contestant_count} qualifiers — {qualifyingCatIds.length} categories
           </div>
         )}
       </div>
 
-      {/* Score Table */}
-      {!selectedCategoryId ? (
+      {!selectedRoundId ? (
         <div className="text-center py-12 text-[var(--color-text-muted)]">
-          <p className="text-lg">Select a category to view live scores.</p>
+          <p className="text-lg">Select a round to view live cross-category scores.</p>
+          <p className="text-sm mt-1">Rounds define which categories determine qualification.</p>
         </div>
-      ) : criteria.length === 0 ? (
+      ) : !qualifyingCatIds.length ? (
         <div className="text-center py-12 text-[var(--color-text-muted)]">
-          <p className="text-lg">No criteria configured for this category.</p>
+          <p className="text-lg">This round has no qualifying categories configured.</p>
+          <p className="text-sm mt-1">Edit the round in the Rounds tab to select which categories determine qualification.</p>
         </div>
-      ) : rankedContestants.length === 0 ? (
+      ) : crossCategoryRanks.length === 0 ? (
         <div className="text-center py-12 text-[var(--color-text-muted)]">
           <p className="text-lg">No scores have been submitted yet.</p>
         </div>
@@ -331,65 +337,65 @@ export default function LiveScores() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-[var(--color-bg)] border-b border-[var(--color-border)]">
-                <th className="sticky left-0 z-10 bg-[var(--color-bg)] text-center py-2 px-2 text-xs font-semibold text-[var(--color-text-muted)] w-12">Rank</th>
-                <th className="sticky left-0 z-10 bg-[var(--color-bg)] text-left py-2 px-3 text-xs font-semibold text-[var(--color-text-muted)] min-w-[140px]" style={{ left: '48px' }}>Contestant</th>
-                {judges.map(j => (
-                  <th key={j.id} className="text-center py-2 px-3 text-xs font-semibold text-[var(--color-text-muted)] border-l border-[var(--color-border)] min-w-[80px]">
-                    {j.name}<br /><span className="opacity-60">Total</span>
-                  </th>
-                ))}
+                <th className="sticky left-0 bg-[var(--color-bg)] text-center py-2 px-2 text-xs font-semibold text-[var(--color-text-muted)] w-12">Rank</th>
+                <th className="sticky left-0 bg-[var(--color-bg)] text-left py-2 px-3 text-xs font-semibold text-[var(--color-text-muted)] min-w-[140px]" style={{ left: '48px' }}>Contestant</th>
+                {qualifyingCatIds.map(catId => {
+                  const cat = categories.find(c => c.id === catId);
+                  const max = cat?.criteria?.reduce((s, crit) => s + crit.max_score, 0) || 0;
+                  return (
+                    <th key={catId} className="text-center py-2 px-3 text-xs font-semibold text-[var(--color-text-muted)] border-l border-[var(--color-border)] min-w-[80px]">
+                      {cat?.name || `Cat ${catId}`}<br />
+                      <span className="opacity-60">0–{max}</span>
+                    </th>
+                  );
+                })}
                 <th className="text-center py-2 px-3 text-xs font-semibold text-[var(--color-text-muted)] border-l border-[var(--color-border)] min-w-[80px]">
-                  Avg<br /><span className="opacity-60">0–100</span>
+                  W. Avg<br /><span className="opacity-60">weighted</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {rankedContestants.map((rc, idx) => {
-                const c = rc.contestant;
-                const avg = contestantAvg(c.id);
-                const isQualifier = round && rc.rank <= round.contestant_count;
-                // Cut line: after the last qualifier whose next contestant has a different rank
-                const drawCutLine = round && isQualifier && idx < rankedContestants.length - 1 &&
-                  rankedContestants[idx + 1].rank > round.contestant_count;
+              {crossCategoryRanks.map((item, idx) => {
+                const c = item.contestant;
+                const isQualifier = round && item.rank <= round.contestant_count;
+                const drawCutLine = round && isQualifier && idx < crossCategoryRanks.length - 1 &&
+                  crossCategoryRanks[idx + 1].rank > round.contestant_count;
 
                 return (
                   <tr key={c.id} className={`border-b border-[var(--color-border)] hover:bg-[var(--color-bg)] transition-colors ${
                     isQualifier ? 'bg-green-500/[0.04]' : ''
                   }`}>
-                    <td className={`sticky left-0 z-10 bg-[var(--color-bg-elevated)] text-center py-2 px-2 text-sm font-bold ${
+                    <td className={`sticky left-0 bg-[var(--color-bg-elevated)] text-center py-2 px-2 text-sm font-bold ${
                       isQualifier ? 'text-emerald-700' : 'text-[var(--color-text)]'
-                    }`}>
-                      {rc.rank}
-                    </td>
-                    <td className="sticky left-0 z-10 bg-[var(--color-bg-elevated)] text-left py-2 px-3 text-sm font-medium text-[var(--color-text)] whitespace-nowrap" style={{ left: '48px' }}>
+                    }`}>{item.rank}</td>
+                    <td className="sticky left-0 bg-[var(--color-bg-elevated)] text-left py-2 px-3 text-sm font-medium text-[var(--color-text)] whitespace-nowrap" style={{ left: '48px' }}>
                       #{c.number} {c.name}
                     </td>
-                    {judges.map(j => {
-                      const total = judgeTotal(j.id, c.id);
-                      const cellKey = `${j.id}:${c.id}`;
+                    {qualifyingCatIds.map(catId => {
+                      const total = categoryTotal(catId, c.id);
+                      const cellKey = `${catId}:c:${c.id}`;
                       const isHighlighted = highlightedCells.has(cellKey);
                       return (
                         <td key={cellKey} className={`text-center py-2 px-3 text-sm font-mono border-l border-[var(--color-border)] transition-all duration-300 ${
-                          isHighlighted ? 'bg-emerald-200/60' : ''
+                          isHighlighted ? 'bg-emerald-200/40' : ''
                         }`}>
                           {total !== null ? Math.round(total) : '—'}
                         </td>
                       );
                     })}
                     <td className="text-center py-2 px-3 text-sm font-bold font-mono text-[var(--color-text)] border-l border-[var(--color-border)]">
-                      {avg !== null ? Math.round(avg) : '—'}
+                      {Math.round(item.weighted_total * 10) / 10}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {/* Cut line indicator */}
-          {round && rankedContestants.some((rc, idx) => {
-            const isQualifier = rc.rank <= round.contestant_count;
-            const nextIsOut = idx < rankedContestants.length - 1 &&
-              rankedContestants[idx + 1].rank > round.contestant_count;
-            return isQualifier && nextIsOut;
+          {/* Cut line */}
+          {round && crossCategoryRanks.some((item, idx) => {
+            const q = item.rank <= round.contestant_count;
+            const nextOut = idx < crossCategoryRanks.length - 1 && crossCategoryRanks[idx + 1].rank > round.contestant_count;
+            return q && nextOut;
           }) && (
             <div className="border-t-2 border-dashed border-amber-400 mx-2 mb-2" />
           )}

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { eliminationRoundsAPI, categoriesAPI, contestantsAPI } from '../api';
 
-export function QualifierSelector({ event, reportData, editingRound, onClose, onCreate }) {
+export function QualifierSelector({ event, reportData, editingRound, onClose, onCreate, categories = [] }) {
   const isEditMode = !!editingRound;
   const [roundName, setRoundName] = useState(editingRound?.round_name || 'Top 10');
   const [contestantCount, setContestantCount] = useState(editingRound?.contestant_count || 10);
@@ -12,6 +12,9 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [qualifyingCategoryIds, setQualifyingCategoryIds] = useState(() =>
+    editingRound?.qualifying_category_ids || categories.map(c => c.id)
+  );
 
   const rankedContestants = useMemo(() => reportData?.contestants || [], [reportData?.contestants]);
   const isUnranked = rankedContestants.length > 0 && rankedContestants[0].overall_rank === undefined;
@@ -55,6 +58,7 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
         round_name: roundName.trim(),
         contestant_count: selectedIds.size,
         qualifiers,
+        qualifying_category_ids: qualifyingCategoryIds,
       });
       onClose();
     } catch (err) {
@@ -138,6 +142,37 @@ export function QualifierSelector({ event, reportData, editingRound, onClose, on
             }
             return null;
           })()}
+
+          {categories.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Qualifying Categories
+              </label>
+              <p className="text-xs text-slate-400 mb-2">
+                These categories determine which contestants advance.
+              </p>
+              <div className="space-y-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg p-2">
+                {categories.map(cat => {
+                  const checked = qualifyingCategoryIds.includes(cat.id);
+                  return (
+                    <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 px-2 py-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setQualifyingCategoryIds(prev =>
+                            checked ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                          );
+                        }}
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-slate-700">{cat.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -512,6 +547,7 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
         <QualifierSelector
           event={{ id: eventId }}
           reportData={reportData || { contestants: standaloneContestants }}
+          categories={categories}
           editingRound={editingRound}
           onClose={() => { setShowQualifierModal(false); setEditingRound(null); }}
           onCreate={handleSaveQualifiers}

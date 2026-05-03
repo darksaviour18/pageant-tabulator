@@ -520,6 +520,7 @@ export default function PrintReport() {
               ? report
               : { contestants: report.ranked_contestants }
           }
+          categories={categories}
           editingRound={null}
           onClose={() => setShowQualifierModal(false)}
           onCreate={async (data) => {

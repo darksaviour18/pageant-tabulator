@@ -13,7 +13,7 @@ const router = Router();
  * round_order auto-assigns as MAX(round_order)+1 if not provided.
  */
 router.post('/', verifyAdmin, (req, res, next) => {
-  const { event_id, round_name, round_order, contestant_count, based_on_report_id, qualifiers } = req.body;
+  const { event_id, round_name, round_order, contestant_count, based_on_report_id, qualifiers, qualifying_category_ids } = req.body;
 
   if (!event_id || !round_name || contestant_count == null) {
     return res.status(400).json({ error: 'event_id, round_name, and contestant_count are required' });
@@ -21,6 +21,10 @@ router.post('/', verifyAdmin, (req, res, next) => {
 
   if (!qualifiers || !Array.isArray(qualifiers) || qualifiers.length === 0) {
     return res.status(400).json({ error: 'qualifiers array is required and must not be empty' });
+  }
+
+  if (!qualifying_category_ids || !Array.isArray(qualifying_category_ids) || qualifying_category_ids.length === 0) {
+    return res.status(400).json({ error: 'qualifying_category_ids array is required and must not be empty' });
   }
 
   try {
@@ -40,9 +44,9 @@ router.post('/', verifyAdmin, (req, res, next) => {
     const dbTx = db.transaction(() => {
       const roundResult = db
         .prepare(
-          'INSERT INTO elimination_rounds (event_id, round_name, round_order, contestant_count, based_on_report_id) VALUES (?, ?, ?, ?, ?)'
+          'INSERT INTO elimination_rounds (event_id, round_name, round_order, contestant_count, based_on_report_id, qualifying_category_ids) VALUES (?, ?, ?, ?, ?, ?)'
         )
-        .run(event_id, round_name, resolvedRoundOrder, contestant_count, based_on_report_id || null);
+        .run(event_id, round_name, resolvedRoundOrder, contestant_count, based_on_report_id || null, JSON.stringify(qualifying_category_ids));
 
       const roundId = roundResult.lastInsertRowid;
 
@@ -226,10 +230,14 @@ router.patch('/:roundId/qualifiers', verifyAdmin, (req, res, next) => {
  */
 router.patch('/:roundId', verifyAdmin, (req, res, next) => {
   const { roundId } = req.params;
-  const { round_name, contestant_count } = req.body;
+  const { round_name, contestant_count, qualifying_category_ids } = req.body;
 
-  if (round_name === undefined && contestant_count === undefined) {
-    return res.status(400).json({ error: 'At least one field (round_name or contestant_count) is required' });
+  if (round_name === undefined && contestant_count === undefined && qualifying_category_ids === undefined) {
+    return res.status(400).json({ error: 'At least one field (round_name, contestant_count, or qualifying_category_ids) is required' });
+  }
+
+  if (qualifying_category_ids !== undefined && (!Array.isArray(qualifying_category_ids) || qualifying_category_ids.length === 0)) {
+    return res.status(400).json({ error: 'qualifying_category_ids must be a non-empty array' });
   }
 
   try {
@@ -248,6 +256,10 @@ router.patch('/:roundId', verifyAdmin, (req, res, next) => {
     if (contestant_count !== undefined && contestant_count !== round.contestant_count) {
       updates.push('contestant_count = ?');
       values.push(Number(contestant_count));
+    }
+    if (qualifying_category_ids !== undefined) {
+      updates.push('qualifying_category_ids = ?');
+      values.push(JSON.stringify(qualifying_category_ids));
     }
 
     if (updates.length > 0) {

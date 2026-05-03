@@ -155,6 +155,7 @@ export function initDatabase() {
       round_order INTEGER NOT NULL,
       contestant_count INTEGER NOT NULL,
       based_on_report_id INTEGER,
+      qualifying_category_ids TEXT, -- JSON array of category IDs: "[1,2,3,4]"
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
       FOREIGN KEY (based_on_report_id) REFERENCES saved_reports(id) ON DELETE SET NULL,
@@ -208,6 +209,15 @@ export function initDatabase() {
   try {
     dbInstance.exec(
       `ALTER TABLE events ADD COLUMN scoring_mode TEXT DEFAULT 'direct' CHECK(scoring_mode IN ('direct', 'weighted'))`
+    );
+  } catch {
+    // Column already exists on subsequent server starts — safe to ignore
+  }
+
+  // v1.17: Migration: Add qualifying_category_ids to elimination_rounds
+  try {
+    dbInstance.exec(
+      `ALTER TABLE elimination_rounds ADD COLUMN qualifying_category_ids TEXT`
     );
   } catch {
     // Column already exists on subsequent server starts — safe to ignore
