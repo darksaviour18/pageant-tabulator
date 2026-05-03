@@ -203,6 +203,23 @@ export default function PrintReport() {
     }
   };
 
+  const handleExportCrossCsv = async () => {
+    if (!report || reportType !== 'cross_category') return;
+    try {
+      const config = reportTitle.trim() ? { category_ids: selectedCategoryIds, report_title: reportTitle.trim() } : { category_ids: selectedCategoryIds };
+      const res = await reportsAPI.getCrossCategoryCsv(parseInt(eventId, 10), config);
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cross_category_${eventId}.csv`.replace(/[^a-z0-9_]/gi, '_');
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export cross-category CSV:', err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Controls - hidden when printing */}
@@ -360,11 +377,20 @@ export default function PrintReport() {
                 className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg transition-colors"
               >
                 <Printer className="w-4 h-4" />
-                Print
+                🖨️ Print / PDF
               </button>
               {reportType === 'category_detail' && selectedCategoryId && (
                 <button
                   onClick={handleExportCsv}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </button>
+              )}
+              {reportType === 'cross_category' && report && (
+                <button
+                  onClick={handleExportCrossCsv}
                   className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
                 >
                   <Download className="w-4 h-4" />
@@ -442,11 +468,18 @@ export default function PrintReport() {
               <p className="text-sm text-slate-500 mt-1">Calculating scores and rankings</p>
             </div>
           ) : (
-            reportType === 'category_detail' ? (
-              <CategoryDetailReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
-            ) : (
-              <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
-            )
+            <>
+              {report?._cached && (
+                <div className="no-print mb-4 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+                  📋 Cached report — may not reflect latest scores
+                </div>
+              )}
+              {reportType === 'category_detail' ? (
+                <CategoryDetailReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
+              ) : (
+                <CrossCategoryReport report={report} event={events.find((e) => e.id === parseInt(eventId))} signatureType={signatureType} customTitle={reportTitle} />
+              )}
+            </>
           )}
         </div>
       )}

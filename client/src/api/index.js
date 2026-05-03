@@ -108,6 +108,7 @@ export const reportsAPI = {
   getReport: (eventId, categoryId) => api.get(`/reports/${eventId}/category/${categoryId}`),
   getCsv: (eventId, categoryId) => api.get(`/reports/${eventId}/category/${categoryId}/csv`, { responseType: 'blob' }),
   getCrossCategoryReport: (eventId, data) => api.post(`/reports/${eventId}/cross-category`, data),
+  getCrossCategoryCsv: (eventId, data) => api.post(`/reports/${eventId}/cross-category/csv`, data, { responseType: 'blob' }),
   saveReport: (data) => api.post('/reports/save', data),
   getSavedReports: (eventId) => api.get(`/reports/saved?event_id=${eventId}`),
   deleteSavedReport: (eventId, id) => api.delete(`/reports/saved/${id}?event_id=${eventId}`),

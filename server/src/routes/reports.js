@@ -172,6 +172,69 @@ router.get('/saved', (req, res, next) => {
 });
 
 /**
+ * POST /api/reports/:eventId/cross-category/csv
+ * Download cross-category report as CSV file.
+ */
+router.post('/:eventId/cross-category/csv', (req, res, next) => {
+  const { eventId } = req.params;
+  const { category_ids, aggregation_type, report_title } = req.body;
+
+  if (!category_ids || !Array.isArray(category_ids) || category_ids.length === 0) {
+    return res.status(400).json({ error: 'category_ids array is required and must not be empty' });
+  }
+
+  try {
+    const report = reportsService.generateCrossCategoryReport(
+      parseInt(eventId, 10),
+      { categoryIds: category_ids, aggregation_type, report_title }
+    );
+
+    if (!report) {
+      return res.status(404).json({ error: 'One or more categories not found for this event' });
+    }
+
+    const csv = crossCategoryToCsv(report);
+    const filename = `cross_category_${eventId}.csv`.replace(/[^a-z0-9_]/gi, '_');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+    return res.send(csv);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Helper: convert cross-category report to CSV format.
+ */
+function crossCategoryToCsv(report) {
+  if (!report || !report.contestants || report.contestants.length === 0) {
+    return '';
+  }
+
+  const lines = [];
+  const headers = ['Rank', 'Contestant', 'Number', ...report.categories.map(c => c.name), 'Weighted Total'];
+  lines.push(headers.map(h => `"${h}"`).join(','));
+
+  for (const c of report.contestants) {
+    const catScores = report.categories.map(cat => {
+      const score = c.category_scores?.[cat.id];
+      return score !== undefined ? score.toFixed(2) : '';
+    });
+    const line = [
+      c.overall_rank || '',
+      `"${c.name}"`,
+      c.number,
+      ...catScores,
+      c.weighted_total.toFixed(4),
+    ];
+    lines.push(line.join(','));
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * GET /api/reports/:eventId/category/:categoryId/csv
  * Download category report as CSV file.
  */
