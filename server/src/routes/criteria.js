@@ -34,6 +34,14 @@ router.post('/', verifyAdmin, (req, res, next) => {
     const isDirect = event?.scoring_mode === 'direct';
     const resolvedMaxScore = max_score ?? (isDirect ? Math.round(weight * 100) : 10);
 
+    // Check total weight BEFORE creating — prevent exceeding 100%
+    const currentTotal = criteriaService.getTotalWeight(parseInt(categoryId, 10));
+    if (currentTotal + weight > 1) {
+      return res.status(400).json({
+        error: `Cannot add criterion: total percentage would exceed 100%. Currently ${(currentTotal * 100).toFixed(1)}% with ${(weight * 100).toFixed(1)}% addition.`
+      });
+    }
+
     const criterion = criteriaService.create(parseInt(categoryId, 10), {
       name: name.trim(),
       weight,
@@ -41,12 +49,6 @@ router.post('/', verifyAdmin, (req, res, next) => {
       max_score: resolvedMaxScore,
       display_order: display_order ?? Math.floor(Date.now() / 1000),
     });
-
-    const totalWeight = criteriaService.getTotalWeight(parseInt(categoryId, 10));
-    if (totalWeight > 1) {
-      criteriaService.delete(criterion.id);
-      return res.status(400).json({ error: `Cannot add criterion: total percentage would exceed 100%. Current: ${(totalWeight * 100).toFixed(1)}%` });
-    }
 
     return res.status(201).json(criterion);
   } catch (err) {
