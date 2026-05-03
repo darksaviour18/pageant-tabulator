@@ -4,7 +4,8 @@ import axios from 'axios';
 import { Shield, AlertCircle } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
-const ADMIN_SESSION_KEY = 'admin_session';
+export const ADMIN_SESSION_KEY = 'admin_session';
+export const ADMIN_TOKEN_KEY = 'admin_token';
 
 export function checkAdminSession() {
   try {
@@ -17,6 +18,7 @@ export function checkAdminSession() {
 
 export function clearAdminSession() {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
   sessionStorage.removeItem('admin_secret');
   axios.post('/api/auth/admin/logout');
 }
@@ -47,6 +49,9 @@ export default function AdminLogin() {
       const res = await axios.post('/api/auth/admin', { secret: secret.trim() });
       if (res.data.success) {
         sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ authenticated: true }));
+        if (res.data.token) {
+          sessionStorage.setItem(ADMIN_TOKEN_KEY, res.data.token);
+        }
         navigate('/');
       }
     } catch (err) {

@@ -41,7 +41,7 @@ router.post('/', (req, res) => {
     path: '/',
   }));
 
-  return res.json({ success: true });
+  return res.json({ success: true, token });
 });
 
 /**

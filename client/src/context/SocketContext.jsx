@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { checkAdminSession } from '../pages/AdminLogin';
+import { checkAdminSession, ADMIN_TOKEN_KEY } from '../pages/AdminLogin';
+import { getJudgeSession } from '../utils/session';
 
 const SocketContext = createContext(null);
 
@@ -20,9 +21,24 @@ export function SocketProvider({ children }) {
   const heartbeatTimerRef = useRef(null);
 
   useEffect(() => {
-    // Check if we're on an admin route and have admin session
-    const isAdmin = window.location.pathname === '/' || window.location.pathname.startsWith('/admin');
+    // Check session type (admin or judge)
+    const isAdminRoute = window.location.pathname === '/' || window.location.pathname.startsWith('/admin');
     const hasAdminSession = checkAdminSession();
+    const adminToken = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    const judgeSession = getJudgeSession();
+
+    // Determine role and credentials
+    let authRole = 'judge';
+    let authPayload = { role: 'judge' };
+    
+    if (isAdminRoute && hasAdminSession) {
+      authRole = 'admin';
+      authPayload = { role: 'admin' };
+    } else if (judgeSession?.judgeId && judgeSession?.eventId) {
+      // Judge session exists - authenticate as judge with credentials
+      authRole = 'judge';
+      authPayload = { role: 'judge', judgeId: judgeSession.judgeId, eventId: judgeSession.eventId };
+    }
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -30,8 +46,8 @@ export function SocketProvider({ children }) {
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
       auth: {
-        role: isAdmin && hasAdminSession ? 'admin' : 'judge',
-        // JWT is sent via httpOnly cookie, not need to include in auth
+        role: authRole,
+        token: adminToken || undefined,
       },
       withCredentials: true,
     });
@@ -39,13 +55,14 @@ export function SocketProvider({ children }) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected:', socket.id);
+      console.log('[Socket] Connected:', socket.id, 'as', authRole);
       setConnected(true);
-      // Authenticate as admin
-      socket.emit('authenticate', { role: 'admin' });
+      // Authenticate with role and credentials
+      socket.emit('authenticate', authPayload);
     });
 
     socket.on('authenticated', (data) => {
+      console.log('[Socket] Authenticated:', data);
       if (data.success && data.role === 'admin') {
         // Only admin connections use heartbeat from this context
         if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
@@ -73,7 +90,8 @@ export function SocketProvider({ children }) {
     socket.on('reconnect', (attempt) => {
       console.log(`[Socket] Reconnected after ${attempt} attempts`);
       setReconnectCount((prev) => prev + 1);
-      socket.emit('authenticate', { role: 'admin' });
+      // Re-authenticate on reconnect
+      socket.emit('authenticate', authPayload);
     });
 
     socket.on('connect_error', (err) => {
