@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { categoriesAPI, criteriaAPI } from '../api';
+import { categoriesAPI, criteriaAPI, eliminationRoundsAPI } from '../api';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
@@ -11,14 +11,32 @@ const WEIGHT_TOLERANCE = 0.001;
 
 export default function CategoriesManager({ eventId }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const { items: categories, loading: catLoading, error: catError, handleCreate: createCategory, handleDelete: deleteCategory } = useCrudResource(
+  const { items: categories, loading: catLoading, error: catError, handleCreate: createCategory, handleDelete: deleteCategory, refresh: refreshCategories } = useCrudResource(
     categoriesAPI,
     { collectionKey: eventId }
   );
 
+  const [rounds, setRounds] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryWeight, setNewCategoryWeight] = useState('1');
+
+  useEffect(() => {
+    if (eventId) {
+      eliminationRoundsAPI.getAll(eventId).then(res => setRounds(res.data || [])).catch(() => {});
+    }
+  }, [eventId]);
+
+  const handleRoundLink = useCallback(async (categoryId, roundId) => {
+    try {
+      await categoriesAPI.setRequiredRound(eventId, categoryId, roundId);
+      await refreshCategories();
+      const res = await eliminationRoundsAPI.getAll(eventId);
+      setRounds(res.data || []);
+    } catch (err) {
+      console.error('Failed to update round link:', err);
+    }
+  }, [eventId, refreshCategories]);
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
@@ -103,11 +121,13 @@ export default function CategoriesManager({ eventId }) {
             <CategoryCard
               key={category.id}
               category={category}
+              rounds={rounds}
               expanded={expandedId === category.id}
               onToggle={() => toggleExpand(category.id)}
               onDelete={() => {
                 handleDeleteCategory(category.id, category.name);
               }}
+              onRoundLink={(roundId) => handleRoundLink(category.id, roundId)}
             />
           ))}
         </div>
@@ -124,7 +144,11 @@ export default function CategoriesManager({ eventId }) {
 /**
  * Individual category card with collapsible criteria section.
  */
-function CategoryCard({ category, expanded, onToggle, onDelete }) {
+function CategoryCard({ category, rounds = [], expanded, onToggle, onDelete, onRoundLink }) {
+  const linkedRound = category.required_round_id
+    ? rounds.find(r => r.id === category.required_round_id)
+    : null;
+
   return (
     <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
       {/* Category Header */}
@@ -139,6 +163,11 @@ function CategoryCard({ category, expanded, onToggle, onDelete }) {
             <ChevronRight className="w-4 h-4" />
           )}
           {category.name}
+          {linkedRound && (
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+              🏆 {linkedRound.round_name}
+            </span>
+          )}
         </button>
         <button
           onClick={onDelete}
@@ -149,9 +178,31 @@ function CategoryCard({ category, expanded, onToggle, onDelete }) {
         </button>
       </div>
 
-      {/* Criteria Section */}
+      {/* Expanded Body */}
       {expanded && (
-        <div className="p-4 border-t border-[var(--color-border)]">
+        <div className="p-4 border-t border-[var(--color-border)] space-y-4">
+          {/* Round Linkage */}
+          {rounds.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-500 font-medium whitespace-nowrap">Gate to round:</label>
+              <select
+                value={category.required_round_id || ''}
+                onChange={(e) => onRoundLink(e.target.value ? Number(e.target.value) : null)}
+                className="w-full max-w-xs px-3 py-1.5 text-sm border border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-cta)] outline-none bg-[var(--color-bg)] text-[var(--color-text)]"
+              >
+                <option value="">All contestants (no round)</option>
+                {rounds.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.round_name} ({r.contestant_count} contestants)
+                  </option>
+                ))}
+              </select>
+              {linkedRound && (
+                <span className="text-xs text-amber-600">✓ Judges see only {linkedRound.round_name} qualifiers</span>
+              )}
+            </div>
+          )}
+
           <CriteriaList categoryId={category.id} />
         </div>
       )}

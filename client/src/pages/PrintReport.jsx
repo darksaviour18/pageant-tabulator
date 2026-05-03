@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { eventsAPI, categoriesAPI } from '../api';
 import { reportsAPI, eliminationRoundsAPI } from '../api';
-import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw, Download } from 'lucide-react';
-import EliminationRoundManager from '../components/EliminationRoundManager';
+import { Crown, Printer, Loader2, Calendar, Users, Award, ChevronLeft, ChevronRight, Save, Trash2, RotateCcw, Download, Plus, ExternalLink } from 'lucide-react';
+import { QualifierSelector } from '../components/EliminationRoundManager';
 
 const REPORT_TYPES = [
   { id: 'category_detail', label: 'Category Detail (Per-Category Scores)' },
@@ -23,6 +23,7 @@ export default function PrintReport() {
   const [signatureType, setSignatureType] = useState('judges'); // 'judges' | 'tabulators'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showQualifierModal, setShowQualifierModal] = useState(false);
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -173,6 +174,7 @@ export default function PrintReport() {
   };
 
   const handleRoundCreated = async () => {
+    setShowQualifierModal(false);
     if (!eventId) return;
     try {
       const res = await eliminationRoundsAPI.getAll(parseInt(eventId, 10));
@@ -466,17 +468,51 @@ export default function PrintReport() {
         </div>
       )}
 
-      {/* Elimination Rounds — shown for all report types */}
+      {/* Elimination Rounds — quick-create shortcut */}
       {report && eventId && (
-        <EliminationRoundManager
-          eventId={parseInt(eventId, 10)}
+        <div className="no-print border-t border-slate-200 pt-4 mt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Elimination Rounds</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Create a round from this report's ranked results</p>
+            </div>
+            <button
+              onClick={() => setShowQualifierModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Create Round from Report
+            </button>
+          </div>
+          {rounds.length > 0 && (
+            <p className="text-xs text-slate-400 mt-2">
+              {rounds.length} round{rounds.length > 1 ? 's' : ''} exist. Manage them in the
+              <span className="text-amber-600 font-medium"> Rounds </span> tab.
+            </p>
+          )}
+          {}
+        </div>
+      )}
+
+      {/* Qualifier Selector Modal */}
+      {showQualifierModal && report && (
+        <QualifierSelector
+          event={{ id: parseInt(eventId, 10) }}
           reportData={
             reportType === 'cross_category'
               ? report
               : { contestants: report.ranked_contestants }
           }
-          categories={categories}
-          onRoundCreated={handleRoundCreated}
+          editingRound={null}
+          onClose={() => setShowQualifierModal(false)}
+          onCreate={async (data) => {
+            try {
+              await eliminationRoundsAPI.create(data);
+              handleRoundCreated();
+            } catch (err) {
+              console.error('Failed to create round:', err);
+            }
+          }}
         />
       )}
     </div>

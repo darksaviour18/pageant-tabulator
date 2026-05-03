@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Users, ChevronDown, ChevronRight, X } from 'lucide-react';
-import { eliminationRoundsAPI, categoriesAPI } from '../api';
+import { eliminationRoundsAPI, categoriesAPI, contestantsAPI } from '../api';
 
-function QualifierSelector({ event, reportData, editingRound, onClose, onCreate }) {
+export function QualifierSelector({ event, reportData, editingRound, onClose, onCreate }) {
   const isEditMode = !!editingRound;
   const [roundName, setRoundName] = useState(editingRound?.round_name || 'Top 10');
   const [contestantCount, setContestantCount] = useState(editingRound?.contestant_count || 10);
@@ -14,6 +14,7 @@ function QualifierSelector({ event, reportData, editingRound, onClose, onCreate 
   const [error, setError] = useState(null);
 
   const rankedContestants = useMemo(() => reportData?.contestants || [], [reportData?.contestants]);
+  const isUnranked = rankedContestants.length > 0 && rankedContestants[0].overall_rank === undefined;
 
   useEffect(() => {
     if (isEditMode && editingRound) {
@@ -108,17 +109,19 @@ function QualifierSelector({ event, reportData, editingRound, onClose, onCreate 
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoSelect}
-              onChange={e => setAutoSelect(e.target.checked)}
-              className="text-amber-600 focus:ring-amber-500"
-            />
-            Auto-select top {contestantCount} by rank
-          </label>
+          {!isUnranked && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoSelect}
+                onChange={e => setAutoSelect(e.target.checked)}
+                className="text-amber-600 focus:ring-amber-500"
+              />
+              Auto-select top {contestantCount} by rank
+            </label>
+          )}
 
-          {(() => {
+          {!isUnranked && (() => {
             const sorted = [...rankedContestants];
             const cutContestant = sorted[contestantCount - 1];
             const nextContestant = sorted[contestantCount];
@@ -163,8 +166,8 @@ function QualifierSelector({ event, reportData, editingRound, onClose, onCreate 
                       onChange={() => toggleContestant(c.id)}
                       className="text-amber-600 focus:ring-amber-500"
                     />
-                    <span className="text-xs text-slate-400 w-8">#{c.overall_rank}</span>
-                    <span className="font-medium text-slate-900">#{c.number} {c.name}</span>
+                    {!isUnranked && <span className="text-xs text-slate-400 w-8">#{c.overall_rank}</span>}
+                    <span className={`font-medium text-slate-900 ${isUnranked ? 'ml-0' : ''}`}>#{c.number} {c.name}</span>
                     <span className="text-xs text-slate-400 ml-auto">
                       {typeof c.weighted_total === 'number' ? c.weighted_total.toFixed(3) : ''}
                     </span>
@@ -197,7 +200,7 @@ function QualifierSelector({ event, reportData, editingRound, onClose, onCreate 
   );
 }
 
-export default function EliminationRoundManager({ eventId, reportData, categories = [], onRoundCreated }) {
+export default function EliminationRoundManager({ eventId, reportData, categories = [], onRoundCreated, standalone = false }) {
   const [rounds, setRounds] = useState([]);
   const [expandedRound, setExpandedRound] = useState(null);
   const [roundQualifiers, setRoundQualifiers] = useState({});
@@ -206,10 +209,19 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
   const [editingRound, setEditingRound] = useState(null);
   const [error, setError] = useState(null);
   const [linkingBusy, setLinkingBusy] = useState(false);
+  const [standaloneContestants, setStandaloneContestants] = useState([]);
 
   useEffect(() => {
     loadRounds();
   }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (standalone && eventId) {
+      contestantsAPI.getAll(eventId, { status: 'active' })
+        .then(res => setStandaloneContestants(res.data || []))
+        .catch(() => {});
+    }
+  }, [standalone, eventId]);
 
   const loadRounds = async () => {
     setLoading(true);
@@ -310,13 +322,13 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
         <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
           Elimination Rounds
         </h3>
-        {reportData && (
+        {(reportData || standalone) && (
           <button
             onClick={() => { setEditingRound(null); setShowQualifierModal(true); }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            Create Round from Report
+            {standalone ? 'Create Round' : 'Create Round from Report'}
           </button>
         )}
       </div>
@@ -330,9 +342,7 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
       ) : rounds.length === 0 ? (
         <div className="text-center py-8 text-slate-400 text-sm">
           No elimination rounds yet.
-          {reportData
-            ? ' Click "Create Round from Report" to create one.'
-            : ' Generate a report first, then create a round.'}
+          Click "Create Round" to create one.
         </div>
       ) : (
         <div className="space-y-2">
@@ -454,10 +464,10 @@ export default function EliminationRoundManager({ eventId, reportData, categorie
         </div>
       )}
 
-      {showQualifierModal && reportData && (
+      {showQualifierModal && (reportData || standalone) && (
         <QualifierSelector
           event={{ id: eventId }}
-          reportData={reportData}
+          reportData={reportData || { contestants: standaloneContestants }}
           editingRound={editingRound}
           onClose={() => { setShowQualifierModal(false); setEditingRound(null); }}
           onCreate={handleSaveQualifiers}

@@ -3,13 +3,15 @@ import EventSetup from './EventSetup';
 import AdminMonitor from './AdminMonitor';
 import PrintReport from './PrintReport';
 import AuditLogs from './AuditLogs';
+import RoundsManager from './RoundsManager';
 import AnimatedTabs from '../components/AnimatedTabs';
-import { ClipboardList, BarChart3, Printer, History } from 'lucide-react';
+import { ClipboardList, BarChart3, Printer, History, Trophy } from 'lucide-react';
 import { useHotkeys, HotkeyHint } from '../hooks/useHotkeys';
 
 const TABS = [
   { id: 'setup', label: 'Setup', icon: ClipboardList },
   { id: 'monitor', label: 'Monitor', icon: BarChart3 },
+  { id: 'rounds', label: 'Rounds', icon: Trophy },
   { id: 'reports', label: 'Reports', icon: Printer },
   { id: 'audit', label: 'Audit', icon: History },
 ];
@@ -54,6 +56,7 @@ export default function AdminDashboard() {
       <div role="tabpanel">
         {activeTab === 'setup' && <EventSetup />}
         {activeTab === 'monitor' && <AdminMonitor />}
+        {activeTab === 'rounds' && <RoundsManager />}
         {activeTab === 'reports' && <PrintReport />}
         {activeTab === 'audit' && <AuditLogs />}
       </div>
