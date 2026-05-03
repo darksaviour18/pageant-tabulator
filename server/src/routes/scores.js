@@ -368,4 +368,30 @@ router.post('/batch', verifyJudge, (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/scores/event/:eventId/category/:categoryId
+ * Get all raw scores for a specific event+category across ALL judges.
+ * Uncached — used by the Live Scores tab for initial data load.
+ */
+router.get('/event/:eventId/category/:categoryId', (req, res, next) => {
+  const { eventId, categoryId } = req.params;
+
+  try {
+    const db = getDb();
+    const scores = db
+      .prepare(
+        `SELECT s.judge_id, s.contestant_id, s.criteria_id, s.score
+         FROM scores s
+         JOIN judges j ON j.id = s.judge_id
+         WHERE s.category_id = ? AND j.event_id = ?
+         ORDER BY s.judge_id, s.contestant_id, s.criteria_id`
+      )
+      .all(parseInt(categoryId, 10), parseInt(eventId, 10));
+
+    return res.json(scores);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

@@ -92,6 +92,8 @@ export const scoresAPI = {
   submitScore: (data) => api.post('/scores', data),
   batchSubmitScores: (scores) => api.post('/scores/batch', { scores }),
   getAllByJudge: (judgeId) => api.get(`/scores/judge/${judgeId}`),
+  getAllByEventAndCategory: (eventId, categoryId) =>
+    api.get(`/scores/event/${eventId}/category/${categoryId}`),
 };
 
 export const submissionsAPI = {
