@@ -276,7 +276,7 @@ export default function JudgeDashboard() {
         {/* Offline banner */}
         {!connected && (
           <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
-            <WifiOff className="w-4 h-4" />
+            <WifiOff className="w-4 h-4" aria-hidden="true" />
             Working offline. Scores saved locally.
           </div>
         )}
@@ -288,15 +288,14 @@ export default function JudgeDashboard() {
               {session.eventName}
             </h1>
             <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" title={`Last sync: ${timeSinceSync}`}>
-              {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
+              {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" aria-label="Connected" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" aria-label="Disconnected" />}
               <span>{connected ? 'Connected' : 'Disconnected'}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-text-muted)] opacity-40">Pageant Tabulator</span>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 min-h-[44px] text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
@@ -342,16 +341,13 @@ export default function JudgeDashboard() {
             <span>Judge {session.judgeName}</span>
             <span className="text-[var(--color-text-muted)]/30">·</span>
             <span className="flex items-center gap-1.5" title={`Last sync: ${timeSinceSync}`}>
-              {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" />}
+              {connected ? <Wifi className="w-3.5 h-3.5 text-green-500" aria-label="Connected" /> : <WifiOff className="w-3.5 h-3.5 text-red-500" aria-label="Disconnected" />}
             </span>
           </div>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1 opacity-40">
-            Pageant Tabulator
-          </p>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 min-h-[44px] text-sm text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Sign Out
@@ -361,7 +357,7 @@ export default function JudgeDashboard() {
       {/* Offline banner */}
       {!connected && (
         <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium">
-          <WifiOff className="w-4 h-4" />
+          <WifiOff className="w-4 h-4" aria-hidden="true" />
           Working offline. Scores saved locally.
         </div>
       )}
@@ -405,7 +401,7 @@ export default function JudgeDashboard() {
                 onClick={() => handleSelectCategory(cat)}
                 disabled={isLocked}
                 aria-label={`${cat.name}: ${isSubmitted ? 'Submitted' : isLocked ? 'Locked' : hasScores ? `Draft ${Math.round((scored / totalCells) * 100)}%` : 'Not started'}`}
-                className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation ${
+                className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
                   isSubmitted
                     ? 'border-green-500/30 bg-green-500/10 cursor-pointer hover:shadow-md active:scale-[0.98]'
                     : isLocked
@@ -427,7 +423,7 @@ export default function JudgeDashboard() {
                           if (p >= 100) return 'bg-green-500';
                           if (p >= 67) return 'bg-green-400';
                           if (p >= 34) return 'bg-yellow-500';
-                          return 'bg-red-500';
+                          return 'bg-amber-500';
                         };
                         return (
                           <>
@@ -449,7 +445,7 @@ export default function JudgeDashboard() {
                   )}
                 </div>
                 <div className="text-sm text-[var(--color-text-muted)]">
-                  {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'}
+                  {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'} · {totalCells} field{totalCells === 1 ? '' : 's'}
                   {isSubmitted && <span className="ml-2 text-green-500">· Submitted</span>}
                 </div>
                 {cat.required_round_id && (

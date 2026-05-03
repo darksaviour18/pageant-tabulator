@@ -17,6 +17,8 @@ export default function ScoreCell({
   totalRows,
   totalCols,
   onFocusCell,
+  contestantName,
+  criterionName,
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? '');
@@ -110,7 +112,7 @@ export default function ScoreCell({
           `}
           min={minScore}
           max={maxScore}
-          aria-label={`Score for contestant row ${rowIndex + 1}`}
+          aria-label={`Score for ${contestantName || `contestant row ${rowIndex + 1}`}, ${criterionName || `criterion ${colIndex + 1}`}`}
         />
         {/* Status icon */}
         {!isReadOnly && !isError && (

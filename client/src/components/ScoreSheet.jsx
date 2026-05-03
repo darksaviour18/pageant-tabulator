@@ -214,6 +214,8 @@ export default function ScoreSheet({
               totalRows={contestants.length}
               totalCols={criteria.length}
               onFocusCell={(r, c) => setFocusedCell({ row: r, col: c })}
+              contestantName={contestant.name}
+              criterionName={crit.name}
             />
           );
         },
