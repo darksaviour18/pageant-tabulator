@@ -401,7 +401,7 @@ export default function JudgeDashboard() {
                 onClick={() => handleSelectCategory(cat)}
                 disabled={isLocked}
                 aria-label={`${cat.name}: ${isSubmitted ? 'Submitted' : isLocked ? 'Locked' : hasScores ? `Draft ${Math.round((scored / totalCells) * 100)}%` : 'Not started'}`}
-                className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                className={`text-left p-4 sm:p-5 min-h-[80px] rounded-xl border-2 transition-all touch-manipulation focus:outline-none focus:ring-2 focus:ring-[var(--color-cta)] focus:ring-offset-2 ${
                   isSubmitted
                     ? 'border-green-500/30 bg-green-500/10 cursor-pointer hover:shadow-md active:scale-[0.98]'
                     : isLocked
@@ -445,7 +445,7 @@ export default function JudgeDashboard() {
                   )}
                 </div>
                 <div className="text-sm text-[var(--color-text-muted)]">
-                  {criteriaCount} criter{criteriaCount === 1 ? 'ion' : 'ia'} · {totalCells} field{totalCells === 1 ? '' : 's'}
+                  {criteriaCount > 0 ? `${criteriaCount} criter${criteriaCount === 1 ? 'ion' : 'ia'}` : 'No criteria'}
                   {isSubmitted && <span className="ml-2 text-green-500">· Submitted</span>}
                 </div>
                 {cat.required_round_id && (
