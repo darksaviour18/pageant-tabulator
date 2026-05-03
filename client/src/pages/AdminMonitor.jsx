@@ -546,8 +546,8 @@ function ScorePreviewModal({ preview, onClose }) {
                       </th>
                     ))}
                     <th className="text-center py-2 px-3 text-[var(--color-text-muted)] font-medium">
-                      <div>Total</div>
-                      <div className="text-[10px] opacity-60">0–{maxTotal}</div>
+                      <div>Total (%)</div>
+                      <div className="text-[10px] opacity-60">0–100</div>
                     </th>
                   </tr>
                 </thead>
@@ -570,7 +570,7 @@ function ScorePreviewModal({ preview, onClose }) {
                           </td>
                         ))}
                         <td className="py-2 px-3 text-center font-bold font-mono text-[var(--color-text)]">
-                          {total !== null ? total.toFixed(1) : '—'}
+                          {total !== null ? `${total.toFixed(1)}%` : '—'}
                         </td>
                       </tr>
                     );
