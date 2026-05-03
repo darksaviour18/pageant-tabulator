@@ -28,7 +28,7 @@ export default function LiveScores() {
   const handleRoundChangeRef = useRef(null);
   const fetchAbortRef = useRef(null);
 
-  useEffect(() => { abortRef.current = false;
+  useEffect(() => {
     eventsAPI.getAll().then(res => {
       const all = res.data || [];
       setEvents(all);
@@ -131,7 +131,6 @@ export default function LiveScores() {
     const controller = new AbortController();
     fetchAbortRef.current = controller;
 
-    setLoading(true);
     try {
       const r = rounds.find(rr => rr.id === parseInt(rId));
       if (!r) { setLoading(false); return; }
@@ -175,7 +174,7 @@ export default function LiveScores() {
       }
     } catch (err) {
       console.error('[LiveScores] Failed to load round data:', err);
-    } finally { setLoading(false); }
+    }
   }, [eventId, judges, rounds, categories]);
 
   useEffect(() => { handleRoundChangeRef.current = handleRoundChange; });
@@ -191,7 +190,6 @@ export default function LiveScores() {
     const controller = new AbortController();
     fetchAbortRef.current = controller;
 
-    setLoading(true);
     try {
       const cat = categories.find(c => c.id === parseInt(catId));
       setCriteria(cat?.criteria || []);
@@ -219,7 +217,7 @@ export default function LiveScores() {
       }
     } catch (err) {
       console.error('[LiveScores] Failed to load category data:', err);
-    } finally { setLoading(false); }
+    }
   }, [eventId, judges, categories]);
 
   // Per-judge total for single-category view
