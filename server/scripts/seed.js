@@ -4,20 +4,15 @@ const db = getDb();
 
 console.log('[Seed] Starting...');
 
-// Clear all tables in correct order
-db.prepare('DELETE FROM scores').run();
-db.prepare('DELETE FROM category_submissions').run();
-db.prepare('DELETE FROM round_qualifiers').run();
-db.prepare('DELETE FROM elimination_rounds').run();
-db.prepare('DELETE FROM criteria').run();
-db.prepare('DELETE FROM categories').run();
-db.prepare('DELETE FROM contestants').run();
-db.prepare('DELETE FROM judges').run();
-db.prepare('DELETE FROM saved_reports').run();
-db.prepare('DELETE FROM audit_log').run();
-db.prepare('DELETE FROM events').run();
+// Clear all tables in correct order and reset auto-increment counters
+const tables = ['scores', 'category_submissions', 'round_qualifiers', 'elimination_rounds',
+                'criteria', 'categories', 'contestants', 'judges', 'saved_reports', 'audit_log', 'events'];
+for (const table of tables) {
+  db.prepare(`DELETE FROM ${table}`).run();
+  db.prepare(`DELETE FROM sqlite_sequence WHERE name='${table}'`).run();
+}
 
-console.log('[Seed] Cleared all tables');
+console.log('[Seed] Cleared all tables and reset auto-increment');
 
 // Create event (defaults to 'direct' scoring_mode)
 const eventResult = db.prepare('INSERT INTO events (name, status, tabulators, scoring_mode) VALUES (?, ?, ?, ?)').run(

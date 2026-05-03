@@ -509,7 +509,7 @@ function ScorePreviewModal({ preview, onClose }) {
                       const c = category.contestants?.find((ct) => ct.id === parseInt(cid));
                       return (
                         <th key={cid} className="text-center py-2 px-3 text-[var(--color-text-muted)] font-medium">
-                          {c ? `#${c.number}` : `#${cid}`}
+                          {c ? `#${c.number}` : `#?`}
                         </th>
                       );
                     })}
