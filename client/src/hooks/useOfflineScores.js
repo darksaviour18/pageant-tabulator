@@ -96,9 +96,7 @@ export function useOfflineScores(judgeId, categoryId, { serverScores = [], onSyn
       if (local !== undefined && local.score != null) {
         return local.score;
       }
-      // If local score is null and synced is false (just cleared, not yet synced), return null
-      // If local score is null but synced is true (server has this value), fall through to server
-      if (local !== undefined && local.score === null && !local.synced) {
+      if (local !== undefined && local.score === null) {
         return null;
       }
       // No local entry - fall back to server scores
