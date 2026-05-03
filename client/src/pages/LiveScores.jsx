@@ -330,7 +330,7 @@ export default function LiveScores() {
         <div className="text-center py-12 text-[var(--color-text-muted)]">
           <p className="text-lg">No criteria configured for this category.</p>
         </div>
-      ) : rankings.length === 0 ? (
+      ) : rankedContestants.length === 0 ? (
         <div className="text-center py-12 text-[var(--color-text-muted)]">
           <p className="text-lg">No scores have been submitted yet.</p>
         </div>
