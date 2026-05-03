@@ -144,6 +144,16 @@ export default function JudgeDashboard() {
         signal: abortControllerRef.current.signal
       });
       setScoringData(res.data);
+      // Populate round names from categories response so the card badge shows immediately
+      if (res.data?.categories) {
+        const names = {};
+        for (const cat of res.data.categories) {
+          if (cat.required_round_id && cat.required_round_name) {
+            names[cat.required_round_id] = cat.required_round_name;
+          }
+        }
+        setRoundNames(names);
+      }
       setError(null);
     } catch (err) {
       if (err.name === 'CanceledError' || err.name === 'AbortError') return;

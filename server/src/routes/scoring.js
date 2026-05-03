@@ -47,9 +47,14 @@ router.get('/:judgeId/event/:eventId', (req, res, next) => {
         .all(eventId, 'active');
     }
 
-    // Get all categories with their criteria
+    // Get all categories with their criteria and round info
     const categories = db
-      .prepare('SELECT id, name, display_order, is_locked, required_round_id FROM categories WHERE event_id = ? ORDER BY display_order')
+      .prepare(
+        `SELECT c.id, c.name, c.display_order, c.is_locked, c.required_round_id, r.round_name AS required_round_name
+         FROM categories c
+         LEFT JOIN elimination_rounds r ON c.required_round_id = r.id
+         WHERE c.event_id = ? ORDER BY c.display_order`
+      )
       .all(eventId);
 
     const categoriesWithCriteria = categories.map((cat) => ({
